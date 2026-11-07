@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "AsexiA Suite 360",
+      "hasCanvas": false,
+      "bodyTextLen": 280,
+      "bodyTextHash": "d42372903003643dc87db4c774336ae9b5981e68ae5f5e9cc8079f7c8ef9d4c6",
+      "bodyTextPrefix": "AsexiA SUITE 360 AsexiA Castellana Dirección Recepción Médico Ta",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "AsexiA Suite 360",
+      "hasCanvas": false,
+      "bodyTextLen": 262,
+      "bodyTextHash": "3d2e5d01a1e6f15d8141d6561a0efb862d35ac411938607ec96a6e8ac0a7d6a8",
+      "bodyTextPrefix": "AsexiA SUITE 360 Dirección Recepción Médico Tablero Mandos Agend",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}

@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-bg: #f3f0ea;
+  --color-bg-elevated: #f7f4ee;
+  --color-surface: #fffcf7;
+  --color-ink: #1a1d1c;
+  --color-ink-muted: #5c615e;
+  --color-ink-subtle: #8a8f8b;
+  --color-accent: #1e4d48;
+  --color-accent-fg: #f7f4ee;
+  --color-accent-soft: #dce8e5;
+  --color-border: #e4dfd6;
+  --color-border-strong: #cdc6b8;
+  --color-channel-wa: #3d6b5c;
+  --color-channel-voice: #3f4d61;
+  --color-success: #3f6b4d;
+  --color-warning: #8a6a32;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --scale-99: 0.99;
+  --scale-press: 0.96;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 1.75rem;
+
+  --shadow-border:
+    0 0 0 1px rgb(26 29 28 / 0.06),
+    0 1px 2px -1px rgb(26 29 28 / 0.06),
+    0 2px 4px 0 rgb(26 29 28 / 0.04);
+  --shadow-border-hover:
+    0 0 0 1px rgb(26 29 28 / 0.08),
+    0 1px 2px -1px rgb(26 29 28 / 0.08),
+    0 2px 4px 0 rgb(26 29 28 / 0.06);
+  --shadow-overlay:
+    0 0 0 1px rgb(26 29 28 / 0.06),
+    0 16px 40px -12px rgb(26 29 28 / 0.22);
+
+  --ease-out-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-quart: cubic-bezier(0.23, 1, 0.32, 1);
+
+  --duration-micro: 80ms;
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-medium: 350ms;
+  --duration-slow: 400ms;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--color-bg);
+    color: var(--color-ink);
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+}
+
+@layer utilities {
+  .label-kicker {
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-ink-subtle);
+  }
+
+  .shadow-border {
+    box-shadow: var(--shadow-border);
+  }
+
+  .shadow-border-hover {
+    box-shadow: var(--shadow-border-hover);
+  }
+
+  .shadow-overlay {
+    box-shadow: var(--shadow-overlay);
+  }
+
+  .fab-anchor {
+    right: max(1.25rem, env(safe-area-inset-right));
+    bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+
+  .voice-dock {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .kanban-scroller {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .kanban-column {
+    flex: 0 0 min(18.5rem, 82vw);
+    scroll-snap-align: start;
+  }
+}
+
+@keyframes asxia-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes asxia-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.skeleton-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-border) 0%,
+    var(--color-bg-elevated) 45%,
+    var(--color-border) 100%
+  );
+  background-size: 200% 100%;
+  animation: asxia-shimmer 1.4s linear infinite;
+}
+
+.enter-stagger {
+  animation: asxia-enter 400ms var(--ease-out-smooth) both;
+}
+
+@keyframes voice-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.voice-pulse {
+  animation: voice-pulse 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer,
+  .enter-stagger,
+  .voice-pulse {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
