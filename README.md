@@ -1,5 +1,7 @@
 # AsexiA Suite 360
 
+CRM inicial de salud, adaptable a otros sectores: gestión de clientes, canvas, agenda, cobros, salas y alertas.
+
 Capa de presentación (PWA) para la gestión comercial y operativa de clínicas.
 React + TypeScript + Tailwind CSS. Los datos son mock con latencia simulada,
 listos para sustituirse por REST o XML-RPC (Odoo) sin tocar las vistas.
