@@ -1,8 +1,9 @@
 import type { ClinicCatalog, Patient, PlannedPayment, Visit } from "../types";
+import { normalizeCatalog } from "../../catalog";
 import { daysAgo, hoursFromNow } from "./clock";
 
 export function seedCatalog(): ClinicCatalog {
-  return {
+  return normalizeCatalog({
     activities: [
       { id: "armonizacion", sector: "Medicina estética", subsector: "Facial", name: "Harmonización facial", description: "Valoración y tratamiento de pómulos y perfil.", durationMin: 60, price: 2400 },
       { id: "implantes", sector: "Odontología", subsector: "Cirugía", name: "Implantes dentales", description: "Fase quirúrgica. Incluye control a la semana.", durationMin: 90, price: 6800 },
@@ -33,7 +34,7 @@ export function seedCatalog(): ClinicCatalog {
       { day: 6, label: "Sábado", open: "10:00", close: "14:00", closed: false },
       { day: 0, label: "Domingo", open: "10:00", close: "14:00", closed: true },
     ],
-  };
+  });
 }
 
 function birthdayIn(days: number, yearsAgo: number) {
@@ -134,6 +135,7 @@ export function attachClinic(list: Patient[]): Patient[] {
       visits: [
         visit({ id: "marta-v0", at: daysAgo(20), activityId: "hidrafacial", activityName: "Hidrafacial", roomId: "sala-1", roomName: "Sala 1 · Facial", durationMin: 50, professional: "Clara Méndez", status: "realizada", notes: "Sesión 1 de 4.", price: 135 }),
         visit({ id: "marta-v1", at: daysAgo(3), activityId: "hidrafacial", activityName: "Hidrafacial", roomId: "sala-1", roomName: "Sala 1 · Facial", durationMin: 50, professional: "Clara Méndez", status: "realizada", notes: "Sesión 2 de 4.", price: 135 }),
+        visit({ id: "marta-miss", at: daysAgo(8), activityId: "hidrafacial", activityName: "Hidrafacial", roomId: "sala-1", roomName: "Sala 1 · Facial", durationMin: 50, professional: "Clara Méndez", status: "ausente", notes: "No acudió. Hueco liberado.", price: 0 }),
         visit({ id: "marta-v2", at: martaNext, activityId: "hidrafacial", activityName: "Hidrafacial", roomId: "sala-1", roomName: "Sala 1 · Facial", durationMin: 50, professional: "Clara Méndez", status: "programada", notes: "Sesión 3 de 4.", price: 135 }),
       ],
       payments: [

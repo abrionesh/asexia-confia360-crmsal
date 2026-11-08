@@ -112,6 +112,7 @@ export function startListening(handlers: {
 export type VoiceAction =
   | { type: "speak"; text: string }
   | { type: "navigate"; id: string; name: string }
+  | { type: "go"; to: "/" | "/actuar" | "/agenda" | "/mandos" | "/admin"; label: string }
   | { type: "search"; query: string }
   | { type: "open-copilot"; prompt?: string }
   | { type: "close-copilot" }
@@ -180,6 +181,11 @@ export function parseVoice(raw: string, patients: Patient[]): VoiceAction {
     return { type: "open-copilot", prompt: prompt.length > 4 ? prompt : undefined };
   }
 
+  if (/actuar|predicc/.test(text)) return { type: "go", to: "/actuar", label: "Actuar" };
+  if (/^agenda|abrir agenda/.test(text)) return { type: "go", to: "/agenda", label: "la agenda" };
+  if (/mandos|cuadro de mandos/.test(text)) return { type: "go", to: "/mandos", label: "el cuadro de mandos" };
+  if (/^tablero|pipeline/.test(text)) return { type: "go", to: "/", label: "el tablero" };
+
   if (/alarma|recordatorio/.test(text)) {
     const due = buildAlarms(patients).filter((alarm) => alarm.status === "due");
     const spoken =
@@ -233,4 +239,4 @@ export function patientScript(patient: Patient, events: TimelineEvent[] = []) {
 }
 
 export const VOICE_HELP =
-  "Puede decir: leer pantalla, alarmas de hoy, abrir Elena Ruiz, buscar implantes, mover Lucía a cita confirmada, o copiloto.";
+  "Puede decir: leer pantalla, actuar, agenda, mandos, abrir Elena Ruiz, buscar implantes, mover Lucía a cita confirmada, o copiloto.";

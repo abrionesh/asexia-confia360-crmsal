@@ -12,11 +12,13 @@ import { downloadQuote } from "@/lib/quote-pdf";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Attachments } from "@/components/files/attachments";
 
 const STATUS_LABEL = {
   programada: "Programada",
   realizada: "Realizada",
   cancelada: "Cancelada",
+  ausente: "No asistió",
 } as const;
 
 export function ActionBar({ patient }: { patient: Patient }) {
@@ -94,7 +96,7 @@ export function FileCanvas({ patient }: { patient: Patient }) {
             {visits.map((visit) => (
               <li key={visit.id} className="rounded-lg bg-bg p-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={visit.status === "realizada" ? "success" : visit.status === "cancelada" ? "muted" : "ink"}>
+                  <Badge tone={visit.status === "realizada" ? "success" : visit.status === "programada" ? "ink" : "muted"}>
                     {STATUS_LABEL[visit.status]}
                   </Badge>
                   <span className="text-xs text-ink-subtle">
@@ -107,11 +109,17 @@ export function FileCanvas({ patient }: { patient: Patient }) {
                 </p>
                 <p className="mt-1 text-sm text-ink">{formatMoney(visit.price)}</p>
                 {visit.notes ? <p className="mt-2 text-sm leading-relaxed text-ink-muted">{visit.notes}</p> : null}
+                <Attachments
+                  target={{ kind: "visit", patientId: patient.id, visitId: visit.id }}
+                  files={visit.files ?? []}
+                  title="Documentos de la cita"
+                />
               </li>
             ))}
           </ul>
         )}
         {catalog ? <VisitForm patient={patient} activities={catalog.activities} rooms={catalog.rooms} /> : null}
+        <Attachments target={{ kind: "patient", patientId: patient.id }} files={patient.files ?? []} title="Documentos de la ficha" />
       </section>
 
       <section className="rounded-xl bg-surface p-4 shadow-border">

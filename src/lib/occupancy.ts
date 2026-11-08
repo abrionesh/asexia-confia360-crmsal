@@ -44,7 +44,7 @@ export function occupancy(patients: Patient[], catalog: ClinicCatalog, day: Date
   const minutes = openMinutes(catalog, day);
   const capacity = minutes * Math.max(1, catalog.rooms.length);
   const visits = allVisits(patients)
-    .filter((visit) => sameDay(visit.at, day) && visit.status !== "cancelada")
+    .filter((visit) => sameDay(visit.at, day) && visit.status !== "cancelada" && visit.status !== "ausente")
     .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
   const booked = visits.reduce((sum, visit) => sum + visit.durationMin, 0);
   return {

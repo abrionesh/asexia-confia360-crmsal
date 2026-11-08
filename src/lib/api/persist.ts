@@ -1,6 +1,6 @@
 import type { ClinicCatalog, Patient, PipelineStage, TimelineEvent } from "./types";
 
-const KEY = "asexia.snapshot.v5";
+const KEY = "asexia.snapshot.v6";
 
 export interface OutboxItem {
   id: string;

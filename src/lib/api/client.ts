@@ -20,8 +20,10 @@ import type {
   Alarm,
   AsexiAApi,
   ClinicCatalog,
+  ClinicFile,
   ContactLog,
   CopilotMessage,
+  FileTarget,
   ManualAlarmInput,
   Patient,
   PaymentInput,
@@ -37,6 +39,7 @@ import { wait } from "./mock/clock";
 import { seedPatients } from "./mock/patients";
 import { seedTimelines } from "./mock/timeline";
 import { attachClinic, seedCatalog } from "./mock/clinic";
+import { normalizeCatalog } from "../catalog";
 import { isOffline, readSnapshot, writeSnapshot, type OutboxItem } from "./persist";
 
 const restored = typeof window !== "undefined" ? readSnapshot() : null;
@@ -45,7 +48,7 @@ let patients: Patient[] = restored?.patients?.length
   : attachClinic(seedPatients.map((patient) => ({ ...patient })));
 let outbox: OutboxItem[] = restored?.outbox ?? [];
 let resolvedAlarms: Record<string, "sent" | "dismissed"> = restored?.resolvedAlarms ?? {};
-let catalog: ClinicCatalog = restored?.catalog ?? seedCatalog();
+let catalog: ClinicCatalog = normalizeCatalog(restored?.catalog ?? seedCatalog());
 const timelines: Record<string, TimelineEvent[]> = restored?.timelines
   ? restored.timelines
   : Object.fromEntries(
@@ -184,6 +187,14 @@ function createMockClient(): AsexiAApi {
           .sort((a, b) => Number(a.status !== "due") - Number(b.status !== "due")),
       );
     },
+    async listOpenAlarms() {
+      if (!isOffline()) await wait(360);
+      return clone(
+        withResolution(buildAlarms(patients))
+          .filter((alarm) => alarm.status !== "sent" && alarm.status !== "dismissed")
+          .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()),
+      );
+    },
     async listPatientAlarms(patientId) {
       if (!isOffline()) await wait(420);
       return clone(
@@ -220,11 +231,11 @@ function createMockClient(): AsexiAApi {
     },
     async getCatalog() {
       if (!isOffline()) await wait(280);
-      return clone(catalog);
+      return clone(normalizeCatalog(catalog));
     },
     async saveCatalog(next) {
       if (!isOffline()) await wait(220);
-      catalog = clone(next);
+      catalog = normalizeCatalog(next);
       persist();
       return clone(catalog);
     },
@@ -471,6 +482,98 @@ function createMockClient(): AsexiAApi {
           ),
         })),
       );
+    },
+    async attachFile(target: FileTarget, input: Omit<ClinicFile, "id" | "addedAt">) {
+      if (!isOffline()) await wait(160);
+      const file: ClinicFile = {
+        id: `file-${Date.now()}`,
+        addedAt: new Date().toISOString(),
+        ...input,
+      };
+      if (target.kind === "patient" || target.kind === "visit") {
+        const patient = patients.find((item) => item.id === target.patientId);
+        if (!patient) return null;
+        if (target.kind === "visit" && !(patient.visits ?? []).some((visit) => visit.id === target.visitId)) {
+          return null;
+        }
+        pushEvent(target.patientId, {
+          channel: "system",
+          direction: "internal",
+          title: "Documento",
+          body: input.name,
+        });
+        patchPatient(target.patientId, (current) => {
+          if (target.kind === "patient") return { ...current, files: [file, ...(current.files ?? [])] };
+          return {
+            ...current,
+            visits: (current.visits ?? []).map((visit) =>
+              visit.id === target.visitId ? { ...visit, files: [file, ...(visit.files ?? [])] } : visit,
+            ),
+          };
+        });
+        return clone(file);
+      }
+      if (target.kind === "professional") {
+        if (!catalog.professionals.some((item) => item.id === target.professionalId)) return null;
+        catalog = normalizeCatalog({
+          ...catalog,
+          professionals: catalog.professionals.map((item) =>
+            item.id === target.professionalId ? { ...item, files: [file, ...(item.files ?? [])] } : item,
+          ),
+        });
+      } else {
+        if (!catalog.activities.some((item) => item.id === target.activityId)) return null;
+        catalog = normalizeCatalog({
+          ...catalog,
+          activities: catalog.activities.map((item) =>
+            item.id === target.activityId ? { ...item, files: [file, ...(item.files ?? [])] } : item,
+          ),
+        });
+      }
+      persist();
+      return clone(file);
+    },
+    async removeFile(target: FileTarget, fileId: string) {
+      if (!isOffline()) await wait(120);
+      if (target.kind === "patient" || target.kind === "visit") {
+        const patient = patients.find((item) => item.id === target.patientId);
+        if (!patient) return false;
+        patchPatient(target.patientId, (current) => {
+          if (target.kind === "patient") {
+            return { ...current, files: (current.files ?? []).filter((file) => file.id !== fileId) };
+          }
+          return {
+            ...current,
+            visits: (current.visits ?? []).map((visit) =>
+              visit.id === target.visitId
+                ? { ...visit, files: (visit.files ?? []).filter((file) => file.id !== fileId) }
+                : visit,
+            ),
+          };
+        });
+        return true;
+      }
+      if (target.kind === "professional") {
+        catalog = normalizeCatalog({
+          ...catalog,
+          professionals: catalog.professionals.map((item) =>
+            item.id === target.professionalId
+              ? { ...item, files: (item.files ?? []).filter((file) => file.id !== fileId) }
+              : item,
+          ),
+        });
+      } else {
+        catalog = normalizeCatalog({
+          ...catalog,
+          activities: catalog.activities.map((item) =>
+            item.id === target.activityId
+              ? { ...item, files: (item.files ?? []).filter((file) => file.id !== fileId) }
+              : item,
+          ),
+        });
+      }
+      persist();
+      return true;
     },
   };
 }

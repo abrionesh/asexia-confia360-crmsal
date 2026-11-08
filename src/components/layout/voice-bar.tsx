@@ -70,6 +70,11 @@ export function VoiceBar() {
       await say(`Abro la ficha de ${action.name}.`);
       return;
     }
+    if (action.type === "go") {
+      void navigate({ to: action.to });
+      await say(`Abro ${action.label}.`);
+      return;
+    }
     if (action.type === "close-copilot") {
       setCopilotOpen(false);
       return;

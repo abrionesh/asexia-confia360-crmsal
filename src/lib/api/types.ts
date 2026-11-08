@@ -45,6 +45,22 @@ export const PIPELINE_STAGES = [
 
 export type PipelineStage = (typeof PIPELINE_STAGES)[number]["id"];
 
+export interface ClinicFile {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  addedAt: string;
+  /** Small files only. Large ones keep the name so the phone storage stays light. */
+  dataUrl?: string;
+}
+
+export type FileTarget =
+  | { kind: "patient"; patientId: string }
+  | { kind: "visit"; patientId: string; visitId: string }
+  | { kind: "professional"; professionalId: string }
+  | { kind: "activity"; activityId: string };
+
 export type LeadSource =
   | "Instagram"
   | "Google Ads"
@@ -89,6 +105,7 @@ export interface Patient {
   consentSigned?: boolean;
   lostReason?: string;
   satisfaction?: "bien" | "regular" | "mal";
+  files?: ClinicFile[];
 }
 
 export type CareKind = "prep" | "aftercare" | "review" | "nurture";
@@ -139,9 +156,10 @@ export interface Visit {
   roomName: string;
   durationMin: number;
   professional: string;
-  status: "programada" | "realizada" | "cancelada";
+  status: "programada" | "realizada" | "cancelada" | "ausente";
   notes: string;
   price: number;
+  files?: ClinicFile[];
 }
 
 export interface PlannedPayment {
@@ -168,6 +186,11 @@ export interface ManualAlarm {
   draft: string;
 }
 
+export interface ActivityLink {
+  label: string;
+  url: string;
+}
+
 export interface Activity {
   id: string;
   sector: string;
@@ -176,6 +199,27 @@ export interface Activity {
   description: string;
   durationMin: number;
   price: number;
+  cost: number;
+  color: string;
+  code: string;
+  links: ActivityLink[];
+  professionalIds: string[];
+  files?: ClinicFile[];
+}
+
+export interface Professional {
+  id: string;
+  name: string;
+  specialty: string;
+  phone: string;
+  email: string;
+  color: string;
+  license?: string;
+  cv?: string;
+  hours: OpeningDay[];
+  /** Coste del profesional en esa actividad. Si no hay cifra, se usa el coste de la actividad. */
+  activityCosts: { activityId: string; cost: number }[];
+  files?: ClinicFile[];
 }
 
 export interface Room {
@@ -195,6 +239,7 @@ export interface ClinicCatalog {
   activities: Activity[];
   rooms: Room[];
   hours: OpeningDay[];
+  professionals: Professional[];
 }
 
 export interface ContactLog {
@@ -267,6 +312,7 @@ export interface AsexiAApi {
   getMetrics(): Promise<PipelineMetrics>;
   askCopilot(prompt: string, patients: Patient[]): Promise<CopilotMessage>;
   listAlarms(): Promise<Alarm[]>;
+  listOpenAlarms(): Promise<Alarm[]>;
   listPatientAlarms(patientId: string): Promise<Alarm[]>;
   resolveAlarm(id: string, status: "sent" | "dismissed"): Promise<Alarm | null>;
   getCatalog(): Promise<ClinicCatalog>;
@@ -282,6 +328,8 @@ export interface AsexiAApi {
   markLost(patientId: string, reason: string): Promise<Patient | null>;
   recordSatisfaction(patientId: string, score: "bien" | "regular" | "mal"): Promise<Patient | null>;
   collectPayment(patientId: string, paymentId: string): Promise<Patient | null>;
+  attachFile(target: FileTarget, file: Omit<ClinicFile, "id" | "addedAt">): Promise<ClinicFile | null>;
+  removeFile(target: FileTarget, fileId: string): Promise<boolean>;
 }
 
 export function stageMeta(id: PipelineStage) {

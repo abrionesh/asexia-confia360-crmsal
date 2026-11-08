@@ -35,81 +35,59 @@ const KIND_TONE = {
   satisfaction: "voice",
 } as const;
 
-export function AlarmQueue() {
+export function AlarmStack({
+  alarms,
+  layout,
+  empty,
+}: {
+  alarms: Alarm[];
+  layout: "strip" | "stack";
+  empty: string;
+}) {
   const queryClient = useQueryClient();
-  const query = useQuery({
-    queryKey: ["alarms"],
-    queryFn: () => api.listAlarms(),
-  });
   const resolve = useResolveAlarm();
-
-  if (query.isPending) {
-    return (
-      <div className="flex gap-3 overflow-hidden">
-        <Skeleton className="h-36 w-72 shrink-0 rounded-xl" />
-        <Skeleton className="h-36 w-72 shrink-0 rounded-xl" />
-      </div>
-    );
-  }
-
-  const alarms = query.data ?? [];
   if (alarms.length === 0) {
-    return (
-      <p className="rounded-xl bg-surface px-4 py-3 text-sm text-ink-muted shadow-border">
-        Sin alarmas en las próximas 24 h. Las citas lejanas siguen en la ficha.
-      </p>
-    );
+    return <p className="rounded-xl bg-surface px-4 py-3 text-sm text-ink-muted shadow-border">{empty}</p>;
   }
-
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="label-kicker">Para actuar</p>
-        <p className="text-xs tabular-nums text-ink-subtle">{alarms.length}</p>
-      </div>
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {alarms.map((alarm) => (
-          <article
-            key={alarm.id}
-            className="flex w-72 shrink-0 flex-col rounded-xl bg-surface p-3 shadow-border"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <Badge tone={KIND_TONE[alarm.kind]}>{KIND_LABEL[alarm.kind]}</Badge>
-              <span className="text-2xs text-ink-subtle">
-                {alarm.status === "due" ? "Vencida" : "Programada"}
-              </span>
-            </div>
-            <Link
-              to="/pacientes/$id"
-              params={{ id: alarm.patientId }}
-              className="mt-2 truncate text-sm font-medium text-ink"
-            >
-              {alarm.patientName}
-            </Link>
-            <p className="mt-0.5 text-sm text-ink">{alarm.title}</p>
-            <p className="mt-1 line-clamp-2 text-xs text-ink-muted">{alarm.reason}</p>
-            <div className="mt-3 flex gap-2">
-              <AlarmActions
-                alarm={alarm}
-                busy={resolve.isPending}
-                onSend={(via) => {
-                  openOutbound(alarm, via);
-                  resolve.mutate(
-                    { id: alarm.id, status: "sent" },
-                    {
-                      onSuccess: () => {
-                        toast.success(`${alarm.patientName} · mensaje listo`);
-                        void queryClient.invalidateQueries({ queryKey: ["timeline", alarm.patientId] });
-                      },
+    <div className={layout === "strip" ? "flex gap-3 overflow-x-auto pb-1" : "flex flex-col gap-3"}>
+      {alarms.map((alarm) => (
+        <article
+          key={alarm.id}
+          className={`flex flex-col rounded-xl bg-surface p-3 shadow-border ${layout === "strip" ? "w-72 shrink-0" : ""}`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <Badge tone={KIND_TONE[alarm.kind]}>{KIND_LABEL[alarm.kind]}</Badge>
+            <span className="text-2xs text-ink-subtle">
+              {alarm.status === "due" ? "Vencida" : "Programada"}
+            </span>
+          </div>
+          <Link to="/pacientes/$id" params={{ id: alarm.patientId }} className="mt-2 truncate text-sm font-medium text-ink">
+            {alarm.patientName}
+          </Link>
+          <p className="mt-0.5 text-sm text-ink">{alarm.title}</p>
+          <p className="mt-1 line-clamp-2 text-xs text-ink-muted">{alarm.reason}</p>
+          <div className="mt-3 flex gap-2">
+            <AlarmActions
+              alarm={alarm}
+              busy={resolve.isPending}
+              onSend={(via) => {
+                openOutbound(alarm, via);
+                resolve.mutate(
+                  { id: alarm.id, status: "sent" },
+                  {
+                    onSuccess: () => {
+                      toast.success(`${alarm.patientName} · mensaje listo`);
+                      void queryClient.invalidateQueries({ queryKey: ["timeline", alarm.patientId] });
                     },
-                  );
-                }}
-                onDismiss={() => resolve.mutate({ id: alarm.id, status: "dismissed" })}
-              />
-            </div>
-          </article>
-        ))}
-      </div>
+                  },
+                );
+              }}
+              onDismiss={() => resolve.mutate({ id: alarm.id, status: "dismissed" })}
+            />
+          </div>
+        </article>
+      ))}
     </div>
   );
 }

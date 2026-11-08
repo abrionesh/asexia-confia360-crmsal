@@ -19,6 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const setRole = useUiStore((state) => state.setRole);
   const links = [
     { to: "/", label: "Tablero", roles: ["direccion", "recepcion"] },
+    { to: "/actuar", label: "Actuar", roles: ["direccion", "recepcion", "medico"] },
     { to: "/mandos", label: "Mandos", roles: ["direccion"] },
     { to: "/agenda", label: "Agenda", roles: ["direccion", "recepcion", "medico"] },
     { to: "/admin", label: "Admin", roles: ["direccion"] },

@@ -26,8 +26,7 @@ function Home() {
           Tablero de leads
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-          Del primer contacto al cuidado posterior. Arriba, lo que hay que avisar
-          hoy: una cita, un silencio o lo que la ficha haya indicado.
+          Columnas, lista o agrupado. Los filtros se abren y se cierran. Lo que hay que avisar está en Actuar.
         </p>
       </div>
       <KanbanBoard />

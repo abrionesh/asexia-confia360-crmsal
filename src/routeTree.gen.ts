@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActuarRouteImport } from './routes/actuar'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as MandosRouteImport } from './routes/mandos'
@@ -18,6 +19,11 @@ import { Route as PacientesIdRouteImport } from './routes/pacientes.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActuarRoute = ActuarRouteImport.update({
+  id: '/actuar',
+  path: '/actuar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -43,6 +49,7 @@ const PacientesIdRoute = PacientesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/actuar': typeof ActuarRoute
   '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
   '/mandos': typeof MandosRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/actuar': typeof ActuarRoute
   '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
   '/mandos': typeof MandosRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/actuar': typeof ActuarRoute
   '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
   '/mandos': typeof MandosRoute
@@ -65,14 +74,23 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/agenda' | '/mandos' | '/pacientes/$id'
+  fullPaths:
+    '/' | '/actuar' | '/admin' | '/agenda' | '/mandos' | '/pacientes/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/agenda' | '/mandos' | '/pacientes/$id'
-  id: '__root__' | '/' | '/admin' | '/agenda' | '/mandos' | '/pacientes/$id'
+  to: '/' | '/actuar' | '/admin' | '/agenda' | '/mandos' | '/pacientes/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/actuar'
+    | '/admin'
+    | '/agenda'
+    | '/mandos'
+    | '/pacientes/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActuarRoute: typeof ActuarRoute
   AdminRoute: typeof AdminRoute
   AgendaRoute: typeof AgendaRoute
   MandosRoute: typeof MandosRoute
@@ -86,6 +104,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/actuar': {
+      id: '/actuar'
+      path: '/actuar'
+      fullPath: '/actuar'
+      preLoaderRoute: typeof ActuarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -121,6 +146,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActuarRoute: ActuarRoute,
   AdminRoute: AdminRoute,
   AgendaRoute: AgendaRoute,
   MandosRoute: MandosRoute,
