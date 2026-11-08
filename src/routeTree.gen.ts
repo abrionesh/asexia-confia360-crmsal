@@ -13,8 +13,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActuarRouteImport } from './routes/actuar'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AgendaRouteImport } from './routes/agenda'
+import { Route as CajaRouteImport } from './routes/caja'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as MandosRouteImport } from './routes/mandos'
+import { Route as PTokenRouteImport } from './routes/p.$token'
 import { Route as PacientesIdRouteImport } from './routes/pacientes.$id'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,14 +40,34 @@ const AgendaRoute = AgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CajaRoute = CajaRouteImport.update({
+  id: '/caja',
+  path: '/caja',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MandosRoute = MandosRouteImport.update({
   id: '/mandos',
   path: '/mandos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PTokenRoute = PTokenRouteImport.update({
+  id: '/p/$token',
+  path: '/p/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PacientesIdRoute = PacientesIdRouteImport.update({
   id: '/pacientes/$id',
   path: '/pacientes/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -52,16 +76,24 @@ export interface FileRoutesByFullPath {
   '/actuar': typeof ActuarRoute
   '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
+  '/caja': typeof CajaRoute
+  '/login': typeof LoginRoute
   '/mandos': typeof MandosRoute
+  '/p/$token': typeof PTokenRoute
   '/pacientes/$id': typeof PacientesIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/actuar': typeof ActuarRoute
   '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
+  '/caja': typeof CajaRoute
+  '/login': typeof LoginRoute
   '/mandos': typeof MandosRoute
+  '/p/$token': typeof PTokenRoute
   '/pacientes/$id': typeof PacientesIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,23 +101,50 @@ export interface FileRoutesById {
   '/actuar': typeof ActuarRoute
   '/admin': typeof AdminRoute
   '/agenda': typeof AgendaRoute
+  '/caja': typeof CajaRoute
+  '/login': typeof LoginRoute
   '/mandos': typeof MandosRoute
+  '/p/$token': typeof PTokenRoute
   '/pacientes/$id': typeof PacientesIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/actuar' | '/admin' | '/agenda' | '/mandos' | '/pacientes/$id'
+    | '/'
+    | '/actuar'
+    | '/admin'
+    | '/agenda'
+    | '/caja'
+    | '/login'
+    | '/mandos'
+    | '/p/$token'
+    | '/pacientes/$id'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/actuar' | '/admin' | '/agenda' | '/mandos' | '/pacientes/$id'
+  to:
+    | '/'
+    | '/actuar'
+    | '/admin'
+    | '/agenda'
+    | '/caja'
+    | '/login'
+    | '/mandos'
+    | '/p/$token'
+    | '/pacientes/$id'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/actuar'
     | '/admin'
     | '/agenda'
+    | '/caja'
+    | '/login'
     | '/mandos'
+    | '/p/$token'
     | '/pacientes/$id'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -93,8 +152,12 @@ export interface RootRouteChildren {
   ActuarRoute: typeof ActuarRoute
   AdminRoute: typeof AdminRoute
   AgendaRoute: typeof AgendaRoute
+  CajaRoute: typeof CajaRoute
+  LoginRoute: typeof LoginRoute
   MandosRoute: typeof MandosRoute
+  PTokenRoute: typeof PTokenRoute
   PacientesIdRoute: typeof PacientesIdRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -127,6 +190,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgendaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/caja': {
+      id: '/caja'
+      path: '/caja'
+      fullPath: '/caja'
+      preLoaderRoute: typeof CajaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mandos': {
       id: '/mandos'
       path: '/mandos'
@@ -134,11 +211,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MandosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$token': {
+      id: '/p/$token'
+      path: '/p/$token'
+      fullPath: '/p/$token'
+      preLoaderRoute: typeof PTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pacientes/$id': {
       id: '/pacientes/$id'
       path: '/pacientes/$id'
       fullPath: '/pacientes/$id'
       preLoaderRoute: typeof PacientesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -149,8 +240,12 @@ const rootRouteChildren: RootRouteChildren = {
   ActuarRoute: ActuarRoute,
   AdminRoute: AdminRoute,
   AgendaRoute: AgendaRoute,
+  CajaRoute: CajaRoute,
+  LoginRoute: LoginRoute,
   MandosRoute: MandosRoute,
+  PTokenRoute: PTokenRoute,
   PacientesIdRoute: PacientesIdRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

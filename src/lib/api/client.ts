@@ -33,6 +33,11 @@ import type {
   VisitInput,
   Invoice,
   WaitEntry,
+  PayMethod,
+  StockItem,
+  TreatmentPack,
+  TpvLine,
+  CashClose,
 } from "./types";
 import { PIPELINE_STAGES } from "./types";
 import { buildAlarms } from "./mock/alarms";
@@ -44,6 +49,7 @@ import { attachClinic, seedCatalog } from "./mock/clinic";
 import { normalizeCatalog } from "../catalog";
 import { isOffline, readSnapshot, writeSnapshot, type OutboxItem, type Snapshot } from "./persist";
 import { scheduleProblem, firstOpening } from "../schedule";
+import { applyReply, applyVisitStatus, dayKey, defaultPacks, defaultStock, isDayClosed, previstoByMethod, tpvByMethod } from "../ops";
 
 const restored = typeof window !== "undefined" ? readSnapshot() : null;
 let patients: Patient[] = restored?.patients?.length
@@ -56,6 +62,10 @@ let waitlist: WaitEntry[] = restored?.waitlist ?? [];
 let dismissedPredictions: string[] = restored?.dismissedPredictions ?? [];
 let invoices: Invoice[] = restored?.invoices ?? [];
 let invoiceSeq = restored?.invoiceSeq ?? 0;
+let stock: StockItem[] = restored?.stock ?? defaultStock();
+let packs: TreatmentPack[] = restored?.packs ?? defaultPacks();
+let tpv: TpvLine[] = restored?.tpv ?? [];
+let closes: CashClose[] = restored?.closes ?? [];
 let revision = restored?.revision ?? 0;
 const timelines: Record<string, TimelineEvent[]> = restored?.timelines
   ? restored.timelines
@@ -78,6 +88,10 @@ function snapshotNow(): Snapshot {
     dismissedPredictions,
     invoices,
     invoiceSeq,
+    stock,
+    packs,
+    tpv,
+    closes,
   };
 }
 
@@ -98,6 +112,10 @@ export function applySnapshot(next: Snapshot) {
   dismissedPredictions = next.dismissedPredictions ?? [];
   invoices = next.invoices ?? [];
   invoiceSeq = next.invoiceSeq ?? invoiceSeq;
+  stock = next.stock ?? stock;
+  packs = next.packs ?? packs;
+  tpv = next.tpv ?? tpv;
+  closes = next.closes ?? closes;
   revision = next.revision ?? revision;
   if (next.timelines) {
     for (const key of Object.keys(timelines)) delete timelines[key];
@@ -178,6 +196,13 @@ function patchPatient(id: string, recipe: (patient: Patient) => Patient) {
   patients = patients.map((patient) => (patient.id === id ? next : patient));
   persist();
   return next;
+}
+
+function portalToken() {
+  const alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
 }
 
 function createMockClient(): AsexiAApi {
@@ -521,23 +546,27 @@ function createMockClient(): AsexiAApi {
       });
       return clone(patchPatient(patientId, (current) => ({ ...current, satisfaction: score })));
     },
-    async collectPayment(patientId, paymentId) {
+    async collectPayment(patientId, paymentId, method: PayMethod) {
       if (!isOffline()) await wait(140);
+      if (isDayClosed(closes, dayKey(new Date()))) {
+        throw new Error("caja: El día está cerrado. El total no se toca.");
+      }
       const patient = patients.find((item) => item.id === patientId);
       const payment = patient?.payments?.find((item) => item.id === paymentId);
       if (!patient || !payment) return null;
+      const label = method === "tarjeta" ? "tarjeta" : method === "transferencia" ? "transferencia" : "efectivo";
       pushEvent(patientId, {
         channel: "system",
         direction: "internal",
         title: "Cobro en caja",
-        body: `${payment.concept} · ${payment.amount} €`,
+        body: `${payment.concept} · ${payment.amount} € · ${label}`,
       });
       return clone(
         patchPatient(patientId, (current) => ({
           ...current,
           payments: (current.payments ?? []).map((item) =>
             item.id === paymentId
-              ? { ...item, status: "cobrado" as const, paidAt: new Date().toISOString() }
+              ? { ...item, status: "cobrado" as const, paidAt: new Date().toISOString(), method }
               : item,
           ),
         })),
@@ -735,6 +764,125 @@ function createMockClient(): AsexiAApi {
       outbox = outbox.filter((item) => item.patientId !== patientId);
       persist();
       return true;
+    },
+    async replyVisit(patientId, answer) {
+      const patient = patients.find((item) => item.id === patientId);
+      if (!patient) return "No encontramos la ficha.";
+      const result = applyReply({ patients, waitlist, catalog, patientId, answer });
+      patients = result.patients;
+      waitlist = result.waitlist;
+      pushEvent(patientId, {
+        channel: "system",
+        direction: "internal",
+        title: answer === "confirmada" ? "Cita confirmada" : "No puede acudir",
+        body: result.message,
+      });
+      persist();
+      return result.message;
+    },
+    async setVisitStatus(patientId, visitId, status) {
+      const result = applyVisitStatus({ patients, waitlist, catalog, stock, patientId, visitId, status });
+      patients = result.patients;
+      waitlist = result.waitlist;
+      stock = result.stock;
+      const label = status === "realizada" ? "Visita hecha" : status === "ausente" ? "No asistió" : status === "cancelada" ? "Cita cancelada" : "Cita";
+      pushEvent(patientId, {
+        channel: "system",
+        direction: "internal",
+        title: label,
+        body: result.note || label,
+      });
+      persist();
+      return clone(patients.find((item) => item.id === patientId) ?? null);
+    },
+    async ensurePortal(patientId) {
+      const patient = patients.find((item) => item.id === patientId);
+      if (!patient) return null;
+      const token = patient.portalToken ?? portalToken();
+      patchPatient(patientId, (current) => ({ ...current, portalToken: token }));
+      const snap = currentSnapshot();
+      const { publishSnapshot } = await import("./sync");
+      await publishSnapshot(snap);
+      return token;
+    },
+    async listDesk() {
+      return clone({ stock, packs, tpv, closes });
+    },
+    async saveStock(items) {
+      stock = items.map((item) => ({ ...item, quantity: Number(item.quantity) || 0, min: Number(item.min) || 0, perVisit: Number(item.perVisit) || 0 }));
+      persist();
+      return clone(stock);
+    },
+    async savePacks(items) {
+      packs = items.filter((item) => item.name.trim() && item.steps.length > 0);
+      persist();
+      return clone(packs);
+    },
+    async assignPlan(patientId, packId, professional) {
+      const pack = packs.find((item) => item.id === packId);
+      const patient = patients.find((item) => item.id === patientId);
+      if (!pack || !patient || !professional.trim()) return null;
+      const plan = {
+        id: `plan-${Date.now()}`,
+        packId: pack.id,
+        name: pack.name,
+        professional: professional.trim(),
+        steps: pack.steps.map((step) => ({ ...step, status: "pendiente" as const })),
+      };
+      pushEvent(patientId, {
+        channel: "system",
+        direction: "internal",
+        title: "Plan de sesiones",
+        body: `${pack.name} · ${professional.trim()}`,
+      });
+      return clone(
+        patchPatient(patientId, (current) => ({
+          ...current,
+          plans: [...(current.plans ?? []), plan],
+        })),
+      );
+    },
+    async setPlanProfessional(patientId, planId, professional) {
+      if (!professional.trim()) return null;
+      return clone(
+        patchPatient(patientId, (current) => ({
+          ...current,
+          plans: (current.plans ?? []).map((plan) =>
+            plan.id === planId ? { ...plan, professional: professional.trim() } : plan,
+          ),
+        })),
+      );
+    },
+    async addTpv(line) {
+      if (isDayClosed(closes, line.day)) throw new Error("caja: Ese día ya está cerrado.");
+      const amount = Number(line.amount);
+      if (!line.day || !Number.isFinite(amount) || amount <= 0) return null;
+      const saved: TpvLine = {
+        id: `tpv-${Date.now()}`,
+        day: line.day,
+        method: line.method,
+        amount,
+        concept: line.concept.trim() || "TPV",
+      };
+      tpv = [saved, ...tpv];
+      persist();
+      return clone(saved);
+    },
+    async closeDay(day) {
+      if (!day) return null;
+      const existing = closes.find((item) => item.day === day);
+      if (existing) return clone(existing);
+      const lines = tpv.filter((item) => item.day === day);
+      const closed: CashClose = {
+        day,
+        closedAt: new Date().toISOString(),
+        previsto: previstoByMethod(patients, day),
+        tpv: tpvByMethod(lines, day),
+        lines,
+      };
+      closes = [closed, ...closes];
+      persist();
+      return clone(closed);
     },
   };
 }

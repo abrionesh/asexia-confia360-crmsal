@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RecordDialog } from "./record-dialog";
 import { Attachments } from "@/components/files/attachments";
+import { ClinicDesk } from "@/components/clinic/desk";
 
 export function Admin() {
   const role = useUiStore((state) => state.role);
@@ -165,6 +166,8 @@ export function Admin() {
       <Button disabled={save.isPending} onClick={() => save.mutate(draft)}>
         Guardar salas y horario
       </Button>
+
+      <ClinicDesk />
 
       <RecordDialog
         open={activity !== null}

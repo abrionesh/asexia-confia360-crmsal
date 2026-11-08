@@ -103,6 +103,10 @@ export interface Patient {
   manualAlarms?: ManualAlarm[];
   contraindications?: string;
   consentSigned?: boolean;
+  consentSignature?: string;
+  consentSignedAt?: string;
+  portalToken?: string;
+  plans?: PatientPlan[];
   lostReason?: string;
   satisfaction?: "bien" | "regular" | "mal";
   files?: ClinicFile[];
@@ -160,6 +164,8 @@ export interface Visit {
   notes: string;
   price: number;
   files?: ClinicFile[];
+  confirmation?: "pendiente" | "confirmada" | "no-puede";
+  stockApplied?: boolean;
 }
 
 export interface PlannedPayment {
@@ -169,6 +175,7 @@ export interface PlannedPayment {
   concept: string;
   status: "pendiente" | "cobrado";
   paidAt?: string;
+  method?: "efectivo" | "tarjeta" | "transferencia";
 }
 
 export interface PendingTask {
@@ -315,6 +322,61 @@ export interface Invoice {
   paymentId?: string;
 }
 
+export type PayMethod = "efectivo" | "tarjeta" | "transferencia";
+
+export interface StockItem {
+  id: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  min: number;
+  activityId?: string;
+  perVisit: number;
+}
+
+export interface PackStep {
+  id: string;
+  activityId: string;
+  action: string;
+  afterDays: number;
+}
+
+export interface TreatmentPack {
+  id: string;
+  name: string;
+  summary: string;
+  steps: PackStep[];
+}
+
+export interface PlanStep extends PackStep {
+  status: "pendiente" | "hecha";
+  visitId?: string;
+}
+
+export interface PatientPlan {
+  id: string;
+  packId: string;
+  name: string;
+  professional: string;
+  steps: PlanStep[];
+}
+
+export interface TpvLine {
+  id: string;
+  day: string;
+  method: PayMethod;
+  amount: number;
+  concept: string;
+}
+
+export interface CashClose {
+  day: string;
+  closedAt: string;
+  previsto: Record<PayMethod, number>;
+  tpv: Record<PayMethod, number>;
+  lines: TpvLine[];
+}
+
 export interface CopilotMessage {
   id: string;
   role: "user" | "assistant";
@@ -353,7 +415,7 @@ export interface AsexiAApi {
   setContraindications(patientId: string, text: string): Promise<Patient | null>;
   markLost(patientId: string, reason: string): Promise<Patient | null>;
   recordSatisfaction(patientId: string, score: "bien" | "regular" | "mal"): Promise<Patient | null>;
-  collectPayment(patientId: string, paymentId: string): Promise<Patient | null>;
+  collectPayment(patientId: string, paymentId: string, method: PayMethod): Promise<Patient | null>;
   attachFile(target: FileTarget, file: Omit<ClinicFile, "id" | "addedAt">): Promise<ClinicFile | null>;
   removeFile(target: FileTarget, fileId: string): Promise<boolean>;
   dismissPrediction(id: string): Promise<string[]>;
@@ -366,6 +428,16 @@ export interface AsexiAApi {
   issueInvoice(patientId: string, paymentId: string, vatRate: number): Promise<Invoice | null>;
   listInvoices(): Promise<Invoice[]>;
   deletePatient(patientId: string): Promise<boolean>;
+  replyVisit(patientId: string, answer: "confirmada" | "no-puede"): Promise<string>;
+  setVisitStatus(patientId: string, visitId: string, status: Visit["status"]): Promise<Patient | null>;
+  ensurePortal(patientId: string): Promise<string | null>;
+  listDesk(): Promise<{ stock: StockItem[]; packs: TreatmentPack[]; tpv: TpvLine[]; closes: CashClose[] }>;
+  saveStock(items: StockItem[]): Promise<StockItem[]>;
+  savePacks(items: TreatmentPack[]): Promise<TreatmentPack[]>;
+  assignPlan(patientId: string, packId: string, professional: string): Promise<Patient | null>;
+  setPlanProfessional(patientId: string, planId: string, professional: string): Promise<Patient | null>;
+  addTpv(line: Omit<TpvLine, "id">): Promise<TpvLine | null>;
+  closeDay(day: string): Promise<CashClose | null>;
 }
 
 export function stageMeta(id: PipelineStage) {

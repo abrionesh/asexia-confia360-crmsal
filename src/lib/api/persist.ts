@@ -1,6 +1,17 @@
-import type { ClinicCatalog, Invoice, Patient, PipelineStage, TimelineEvent, WaitEntry } from "./types";
+import type {
+  CashClose,
+  ClinicCatalog,
+  Invoice,
+  Patient,
+  PipelineStage,
+  StockItem,
+  TimelineEvent,
+  TreatmentPack,
+  TpvLine,
+  WaitEntry,
+} from "./types";
 
-const KEY = "asexia.snapshot.v8";
+const KEY = "asexia.snapshot.v9";
 
 export interface OutboxItem {
   id: string;
@@ -21,6 +32,21 @@ export interface Snapshot {
   dismissedPredictions?: string[];
   invoices?: Invoice[];
   invoiceSeq?: number;
+  stock?: StockItem[];
+  packs?: TreatmentPack[];
+  tpv?: TpvLine[];
+  closes?: CashClose[];
+}
+
+export function parseSnapshot(value: unknown): Snapshot | null {
+  if (!value) return null;
+  try {
+    const parsed = (typeof value === "string" ? JSON.parse(value) : value) as Snapshot;
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.patients)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 export function isOffline() {
@@ -32,20 +58,7 @@ export function readSnapshot(): Snapshot | null {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Snapshot;
-    if (!Array.isArray(parsed.patients)) return null;
-    return {
-      patients: parsed.patients,
-      outbox: parsed.outbox ?? [],
-      resolvedAlarms: parsed.resolvedAlarms ?? {},
-      timelines: parsed.timelines,
-      catalog: parsed.catalog,
-      waitlist: parsed.waitlist ?? [],
-      dismissedPredictions: parsed.dismissedPredictions ?? [],
-      invoices: parsed.invoices ?? [],
-      invoiceSeq: parsed.invoiceSeq ?? 0,
-      revision: parsed.revision ?? 0,
-    };
+    return parseSnapshot(raw);
   } catch {
     return null;
   }

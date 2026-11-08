@@ -21,7 +21,7 @@ export async function pullClinicBook() {
   pulling = true;
   try {
     const remote = await readClinicBook();
-    if (!remote || typeof remote.revision !== "number") return "same" as const;
+    if (!remote || typeof remote.revision !== "number" || !remote.role) return "same" as const;
     if (remote.snapshot && remote.revision > localRevision()) {
       applySnapshot({ ...remote.snapshot, revision: remote.revision });
       return "updated" as const;
@@ -40,6 +40,19 @@ export async function pullClinicBook() {
   } finally {
     pulling = false;
   }
+}
+
+/** After creating or joining: take the clinic book if it already has data. */
+export async function adoptClinicBook() {
+  const remote = await readClinicBook();
+  if (remote.snapshot && remote.revision > 0) {
+    applySnapshot({ ...remote.snapshot, revision: remote.revision });
+    return remote;
+  }
+  const snap = { ...currentSnapshot(), revision: Math.max(localRevision(), 1) };
+  applySnapshot(snap);
+  await publishSnapshot(currentSnapshot());
+  return remote;
 }
 
 export function ClinicSync() {

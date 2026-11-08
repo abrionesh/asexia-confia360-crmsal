@@ -1,4 +1,4 @@
-import { i as __toESM, r as __require, t as __commonJSMin } from "../../_runtime.mjs";
+import { i as __require, o as __toESM, t as __commonJSMin } from "../../_runtime.mjs";
 import { l as require_react_dom, u as require_react } from "../@floating-ui/react-dom+[...].mjs";
 import { i as parseHref, r as normalizeProtocolRelative } from "../tanstack__history.mjs";
 import { o as require_jsx_runtime } from "../@radix-ui/react-collection+[...].mjs";
@@ -46,6 +46,10 @@ function redirect(opts) {
 /** Check whether a value is a TanStack Router redirect Response. */
 function isRedirect(obj) {
 	return obj instanceof Response && !!obj.options;
+}
+/** Parse a serialized redirect object back into a redirect Response. */
+function parseRedirect(obj) {
+	if (obj !== null && typeof obj === "object" && obj.isSerializedRedirect) return redirect(obj);
 }
 //#endregion
 //#region node_modules/@tanstack/router-core/dist/esm/ssr/ssr-match-id.js
@@ -6893,6 +6897,31 @@ function useNavigate(_defaultOpts) {
 			from: options.from ?? _defaultOpts?.from
 		});
 	}, [_defaultOpts?.from, router]);
+}
+/**
+* Component that triggers a navigation when rendered. Navigation executes
+* in an effect after mount/update.
+*
+* Props are the same as `NavigateOptions` used by `navigate()`.
+*
+* @returns null
+* @link https://tanstack.com/router/latest/docs/framework/react/api/router/navigateComponent
+*/
+function Navigate(props) {
+	const router = useRouter();
+	const navigate = useNavigate();
+	const previousPropsRef = import_react.useRef(null);
+	useLayoutEffect(() => {
+		if (previousPropsRef.current !== props) {
+			navigate(props);
+			previousPropsRef.current = props;
+		}
+	}, [
+		router,
+		props,
+		navigate
+	]);
+	return null;
 }
 //#endregion
 //#region node_modules/@tanstack/react-router/dist/esm/useRouteContext.js
@@ -17276,4 +17305,4 @@ var renderRouterToStream = async ({ request, router, responseHeaders, children }
 	}
 };
 //#endregion
-export { createInlineCssPlaceholderAsset as A, createSieveCache as B, createPlugin as C, isStream as D, fromJSON as E, resolveManifestCssLink as F, isRedirect as G, isDangerousProtocol as H, waitForReason as I, rootRouteId as K, _getRenderedMatches as L, getScriptPreloadAttrs as M, getStylesheetHref as N, toCrossJSONAsync as O, resolveManifestAssetLink as P, executeRewriteInput as R, useRouter as S, crossSerializeStream as T, isPromise as U, decodePath as V, dehydrateSsrMatchId as W, lazyRouteComponent as _, isSsrResponse as a, Link as b, stripSsrResponseBody as c, Scripts as d, HeadContent as f, Outlet as g, createRouter as h, disposeSsrResponse as i, createInlineCssStyleAsset as j, toCrossJSONStream as k, createHydrationScripts as l, RouterProvider as m, bindSsrResponseToRequest as n, normalizeSsrResponse as o, useRouterState as p, isNotFound as q, defineHandlerCallback as r, replaceSsrResponse as s, renderRouterToStream as t, GLOBAL_TSR as u, createFileRoute as v, createStream as w, useNavigate as x, createRootRoute as y, invariant as z };
+export { toCrossJSONStream as A, invariant as B, useRouter as C, fromJSON as D, crossSerializeStream as E, resolveManifestAssetLink as F, dehydrateSsrMatchId as G, decodePath as H, resolveManifestCssLink as I, rootRouteId as J, isRedirect as K, waitForReason as L, createInlineCssStyleAsset as M, getScriptPreloadAttrs as N, isStream as O, getStylesheetHref as P, _getRenderedMatches as R, useNavigate as S, createStream as T, isDangerousProtocol as U, createSieveCache as V, isPromise as W, isNotFound as Y, lazyRouteComponent as _, isSsrResponse as a, Link as b, stripSsrResponseBody as c, Scripts as d, HeadContent as f, Outlet as g, createRouter as h, disposeSsrResponse as i, createInlineCssPlaceholderAsset as j, toCrossJSONAsync as k, createHydrationScripts as l, RouterProvider as m, bindSsrResponseToRequest as n, normalizeSsrResponse as o, useRouterState as p, parseRedirect as q, defineHandlerCallback as r, replaceSsrResponse as s, renderRouterToStream as t, GLOBAL_TSR as u, createFileRoute as v, createPlugin as w, Navigate as x, createRootRoute as y, executeRewriteInput as z };

@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "AsexiA Suite 360",
+      "hasCanvas": false,
+      "bodyTextLen": 22,
+      "bodyTextHash": "a8fcd7e334d754290d4771e13b2b5ce9c83c069d0b7897dc68741ea011906d2e",
+      "bodyTextPrefix": "Comprobando el acceso…",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-dev.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "AsexiA Suite 360",
+      "hasCanvas": false,
+      "bodyTextLen": 22,
+      "bodyTextHash": "a8fcd7e334d754290d4771e13b2b5ce9c83c069d0b7897dc68741ea011906d2e",
+      "bodyTextPrefix": "Comprobando el acceso…",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-dev-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-dev.json"
+}

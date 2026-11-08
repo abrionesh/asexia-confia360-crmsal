@@ -9,6 +9,7 @@ import { useUiStore } from "@/lib/store/ui";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlarmStack } from "@/components/alarms/queue";
+import { StockBanner } from "@/components/clinic/desk";
 
 const MODES = [
   ["actuar", "Actuar"],
@@ -64,6 +65,7 @@ export function ActuarHub() {
           Lo urgente, las alarmas que vienen y lo que el historial deja prever. El tablero se queda para mover fichas.
         </p>
       </div>
+      <StockBanner />
       <div className="flex gap-2 overflow-x-auto">
         {MODES.map(([id, label]) => (
           <button

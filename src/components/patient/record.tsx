@@ -5,6 +5,7 @@ import { es } from "date-fns/locale";
 import { Mail, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, type AlarmChannel, type Patient } from "@/lib/api";
+import type { PayMethod } from "@/lib/api/types";
 import { economics } from "@/lib/economics";
 import { openMail, openWhatsApp } from "@/lib/outbound";
 import { formatMoney } from "@/lib/utils";
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Attachments } from "@/components/files/attachments";
+import { PatientPlans } from "@/components/patient/plans";
 
 const STATUS_LABEL = {
   programada: "Programada",
@@ -109,6 +111,9 @@ export function FileCanvas({ patient }: { patient: Patient }) {
                 </p>
                 <p className="mt-1 text-sm text-ink">{formatMoney(visit.price)}</p>
                 {visit.notes ? <p className="mt-2 text-sm leading-relaxed text-ink-muted">{visit.notes}</p> : null}
+                {visit.confirmation === "confirmada" ? <p className="mt-2 text-xs text-ink-muted">El paciente confirmó.</p> : null}
+                {visit.confirmation === "no-puede" ? <p className="mt-2 text-xs text-ink-muted">Dijo que no puede.</p> : null}
+                <VisitActions patientId={patient.id} visitId={visit.id} status={visit.status} />
                 <Attachments
                   target={{ kind: "visit", patientId: patient.id, visitId: visit.id }}
                   files={visit.files ?? []}
@@ -119,6 +124,7 @@ export function FileCanvas({ patient }: { patient: Patient }) {
           </ul>
         )}
         {catalog ? <VisitForm patient={patient} activities={catalog.activities} rooms={catalog.rooms} /> : null}
+        <PatientPlans patient={patient} />
         <Attachments target={{ kind: "patient", patientId: patient.id }} files={patient.files ?? []} title="Documentos de la ficha" />
       </section>
 
@@ -140,6 +146,7 @@ export function FileCanvas({ patient }: { patient: Patient }) {
                 <span className="block font-medium text-ink">{payment.concept}</span>
                 <span className="text-xs text-ink-subtle">
                   {format(new Date(payment.dueAt), "d MMM yyyy", { locale: es })} · {payment.status}
+                  {payment.method ? ` · ${payment.method}` : ""}
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
@@ -206,16 +213,55 @@ function Money({ label, value }: { label: string; value: number }) {
 function CollectButton({ patientId, paymentId }: { patientId: string; paymentId: string }) {
   const refresh = useRefresh(patientId);
   const collect = useMutation({
-    mutationFn: () => api.collectPayment(patientId, paymentId),
+    mutationFn: (method: PayMethod) => api.collectPayment(patientId, paymentId, method),
     onSuccess: () => {
       refresh();
       toast.success("Entra en la caja de hoy");
     },
+    onError: (error) => toast.error(error instanceof Error ? error.message.replace(/^caja: /, "") : "No se pudo cobrar"),
   });
   return (
-    <Button className="mt-2" size="sm" variant="secondary" disabled={collect.isPending} onClick={() => collect.mutate()}>
-      Cobrar en caja
-    </Button>
+    <div className="mt-2 flex flex-wrap gap-2">
+      {(
+        [
+          ["efectivo", "Efectivo"],
+          ["tarjeta", "Tarjeta"],
+          ["transferencia", "Transferencia"],
+        ] as const
+      ).map(([method, label]) => (
+        <Button key={method} size="sm" variant="secondary" disabled={collect.isPending} onClick={() => collect.mutate(method)}>
+          {label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function VisitActions({
+  patientId,
+  visitId,
+  status,
+}: {
+  patientId: string;
+  visitId: string;
+  status: "programada" | "realizada" | "cancelada" | "ausente";
+}) {
+  const refresh = useRefresh(patientId);
+  const save = useMutation({
+    mutationFn: (next: "realizada" | "ausente" | "cancelada") => api.setVisitStatus(patientId, visitId, next),
+    onSuccess: () => {
+      refresh();
+      toast.success("Cita actualizada");
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message.replace(/^agenda: /, "") : "No se pudo"),
+  });
+  if (status !== "programada") return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <Button size="sm" disabled={save.isPending} onClick={() => save.mutate("realizada")}>Hecha</Button>
+      <Button size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate("ausente")}>No asistió</Button>
+      <Button size="sm" variant="ghost" disabled={save.isPending} onClick={() => save.mutate("cancelada")}>Cancelar</Button>
+    </div>
   );
 }
 

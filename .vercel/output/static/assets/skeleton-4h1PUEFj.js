@@ -1,0 +1,1 @@
+import{a as e,t}from"./utils-DpY_ixtL.js";var n=e();function r({className:e}){return(0,n.jsx)(`div`,{className:t(`skeleton-shimmer rounded-md`,e),"aria-hidden":`true`})}export{r as t};

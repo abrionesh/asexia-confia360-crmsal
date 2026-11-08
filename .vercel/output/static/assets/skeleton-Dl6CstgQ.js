@@ -1,1 +1,0 @@
-import{B as e,u as t}from"./client-Oh0A05jM.js";var n=e();function r({className:e}){return(0,n.jsx)(`div`,{className:t(`skeleton-shimmer rounded-md`,e),"aria-hidden":`true`})}export{r as t};

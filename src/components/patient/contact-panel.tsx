@@ -152,7 +152,22 @@ function ClinicalBlock({ patient }: { patient: Patient }) {
     mutationFn: () => api.signConsent(patient.id),
     onSuccess: () => {
       refresh();
-      toast.success("Consentimiento firmado");
+      toast.success("Consentimiento marcado en recepción");
+    },
+  });
+  const [link, setLink] = useState("");
+  const portal = useMutation({
+    mutationFn: () => api.ensurePortal(patient.id),
+    onSuccess: async (token) => {
+      if (!token) return;
+      const url = `${window.location.origin}/p/${token}`;
+      setLink(url);
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Enlace del paciente copiado");
+      } catch {
+        toast.message("Copie el enlace de la ficha");
+      }
     },
   });
 
@@ -171,14 +186,23 @@ function ClinicalBlock({ patient }: { patient: Patient }) {
         <Button size="sm" variant="outline" disabled={save.isPending} onClick={() => save.mutate()}>
           Guardar
         </Button>
+        <Button size="sm" variant="secondary" disabled={portal.isPending} onClick={() => portal.mutate()}>
+          Enlace para el móvil
+        </Button>
         {patient.consentSigned ? (
           <Badge tone="success">Consentimiento firmado</Badge>
         ) : (
           <Button size="sm" disabled={sign.isPending} onClick={() => sign.mutate()}>
-            Firmar consentimiento
+            Marcar firmado aquí
           </Button>
         )}
       </div>
+      {patient.consentSignature ? (
+        <img src={patient.consentSignature} alt="Firma del consentimiento" className="mt-3 h-16 max-w-full rounded-md bg-[#fffdf8] shadow-border" />
+      ) : null}
+      {link ? (
+        <p className="mt-2 break-all text-xs text-ink-muted">{link}</p>
+      ) : null}
       {patient.consentSigned ? null : (
         <p className="mt-2 text-xs text-ink-muted">Sin firma no se programa quirófano.</p>
       )}

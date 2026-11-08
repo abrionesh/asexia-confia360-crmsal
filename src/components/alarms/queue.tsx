@@ -172,6 +172,7 @@ function AlarmActions({
   if (alarm.channel === "internal") {
     return (
       <>
+        <ReplyButtons alarm={alarm} />
         <Button size="sm" disabled={busy} onClick={() => onSend("call")}>
           <Phone className="size-4" />
           Registrar llamada
@@ -185,6 +186,7 @@ function AlarmActions({
 
   return (
     <>
+      <ReplyButtons alarm={alarm} />
       <Button size="sm" disabled={busy} onClick={() => onSend("whatsapp")}>
         <MessageCircle className="size-4" />
         WhatsApp
@@ -195,6 +197,28 @@ function AlarmActions({
       </Button>
       <Button size="sm" variant="ghost" disabled={busy} onClick={onDismiss}>
         Descartar
+      </Button>
+    </>
+  );
+}
+
+function ReplyButtons({ alarm }: { alarm: Alarm }) {
+  const queryClient = useQueryClient();
+  const reply = useMutation({
+    mutationFn: (answer: "confirmada" | "no-puede") => api.replyVisit(alarm.patientId, answer),
+    onSuccess: (message) => {
+      toast.success(message);
+      void queryClient.invalidateQueries();
+    },
+  });
+  if (alarm.kind !== "reminder") return null;
+  return (
+    <>
+      <Button size="sm" disabled={reply.isPending} onClick={() => reply.mutate("confirmada")}>
+        Confirmo
+      </Button>
+      <Button size="sm" variant="outline" disabled={reply.isPending} onClick={() => reply.mutate("no-puede")}>
+        No puedo
       </Button>
     </>
   );

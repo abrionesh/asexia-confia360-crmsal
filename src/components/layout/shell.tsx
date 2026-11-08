@@ -4,25 +4,49 @@ import { Search } from "lucide-react";
 import { Toaster } from "sonner";
 import { AsexiAMark } from "@/components/brand/mark";
 import { CopilotDrawer, CopilotFab } from "@/components/copilot/copilot";
+import { StaffGate } from "@/components/layout/access";
 import { StatusChrome } from "@/components/layout/status-chrome";
 import { VoiceBar } from "@/components/layout/voice-bar";
 import { Input } from "@/components/ui/input";
+import { UserButton } from "@/lib/auth/gates";
 import { useUiStore } from "@/lib/store/ui";
 import { ClinicSync } from "@/lib/api/sync";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const bare = pathname === "/login" || pathname.startsWith("/p/");
+
+  if (bare) {
+    return (
+      <div className="min-h-dvh bg-bg text-ink">
+        {children}
+        <Toaster position="top-center" toastOptions={{ className: "!bg-surface !text-ink !border-border !shadow-overlay !font-sans" }} />
+      </div>
+    );
+  }
+
+  return (
+    <StaffGate>
+      <ClinicChrome pathname={pathname}>{children}</ClinicChrome>
+    </StaffGate>
+  );
+}
+
+function ClinicChrome({ pathname, children }: { pathname: string; children: ReactNode }) {
   const isHome = pathname === "/";
   const search = useUiStore((state) => state.search);
   const setSearch = useUiStore((state) => state.setSearch);
   const role = useUiStore((state) => state.role);
-  const setRole = useUiStore((state) => state.setRole);
+  const clinicCode = useUiStore((state) => state.clinicCode);
+  const clinicName = useUiStore((state) => state.clinicName);
+  const roleLabel = role === "direccion" ? "Dirección" : role === "recepcion" ? "Recepción" : "Médico";
   const links = [
     { to: "/", label: "Tablero", roles: ["direccion", "recepcion"] },
     { to: "/actuar", label: "Actuar", roles: ["direccion", "recepcion", "medico"] },
     { to: "/mandos", label: "Mandos", roles: ["direccion"] },
     { to: "/agenda", label: "Agenda", roles: ["direccion", "recepcion", "medico"] },
+    { to: "/caja", label: "Caja", roles: ["direccion", "recepcion"] },
     { to: "/admin", label: "Admin", roles: ["direccion"] },
   ] as const;
 
@@ -37,38 +61,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="block font-display text-lg leading-none font-medium tracking-tight text-ink">
                 AsexiA
               </span>
-              <span className="label-kicker mt-0.5 block">
-                Suite 360
-              </span>
+              <span className="label-kicker mt-0.5 block">Suite 360</span>
             </span>
           </Link>
-
-          <div className="ml-auto hidden items-center gap-4 text-xs text-ink-muted sm:flex">
-            <span>AsexiA Castellana</span>
+          <div className="ml-auto flex min-w-0 items-center gap-3">
+            <span className="hidden text-right sm:block">
+              <span className="block truncate text-xs text-ink-muted">{clinicName || "Clínica"} · {roleLabel}</span>
+              {clinicCode ? <span className="block text-2xs tracking-wide text-ink-subtle">Código {clinicCode}</span> : null}
+            </span>
+            <UserButton />
           </div>
         </div>
-
-        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-2 sm:px-6">
-          {(
-            [
-              ["direccion", "Dirección"],
-              ["recepcion", "Recepción"],
-              ["medico", "Médico"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setRole(id)}
-              className={cn(
-                "inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-medium",
-                role === id ? "bg-ink text-accent-fg" : "text-ink-muted",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <p className="mx-auto max-w-7xl px-4 pb-2 text-xs text-ink-muted sm:hidden">
+          {roleLabel}
+          {clinicCode ? ` · código ${clinicCode}` : ""}
+        </p>
 
         <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6">
           {links.filter((link) => (link.roles as readonly string[]).includes(role)).map((link) => {
@@ -115,8 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Toaster
         position="top-center"
         toastOptions={{
-          className:
-            "!bg-surface !text-ink !border-border !shadow-overlay !font-sans",
+          className: "!bg-surface !text-ink !border-border !shadow-overlay !font-sans",
         }}
       />
     </div>

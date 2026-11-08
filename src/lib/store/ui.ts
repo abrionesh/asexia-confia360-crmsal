@@ -9,6 +9,8 @@ interface UiState {
   copilotBusy: boolean;
   role: ClinicRole;
   doctor: string;
+  clinicCode: string;
+  clinicName: string;
   setSearch: (value: string) => void;
   setCopilotOpen: (open: boolean) => void;
   pushMessage: (message: CopilotMessage) => void;
@@ -16,6 +18,7 @@ interface UiState {
   resetCopilot: () => void;
   setRole: (role: ClinicRole) => void;
   setDoctor: (doctor: string) => void;
+  setClinic: (code: string, name: string) => void;
 }
 
 export type ClinicRole = "direccion" | "recepcion" | "medico";
@@ -36,6 +39,8 @@ export const useUiStore = create<UiState>((set) => ({
   copilotBusy: false,
   role: storedRole(),
   doctor: "Dra. Elena Marín",
+  clinicCode: "",
+  clinicName: "",
   setSearch: (search) => set({ search }),
   setCopilotOpen: (copilotOpen) => set({ copilotOpen }),
   pushMessage: (message) =>
@@ -47,4 +52,5 @@ export const useUiStore = create<UiState>((set) => ({
     set({ role });
   },
   setDoctor: (doctor) => set({ doctor }),
+  setClinic: (clinicCode, clinicName) => set({ clinicCode, clinicName }),
 }));
