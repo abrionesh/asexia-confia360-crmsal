@@ -1,6 +1,6 @@
-import type { ClinicCatalog, Patient, PipelineStage, TimelineEvent } from "./types";
+import type { ClinicCatalog, Invoice, Patient, PipelineStage, TimelineEvent, WaitEntry } from "./types";
 
-const KEY = "asexia.snapshot.v6";
+const KEY = "asexia.snapshot.v8";
 
 export interface OutboxItem {
   id: string;
@@ -11,11 +11,16 @@ export interface OutboxItem {
 }
 
 export interface Snapshot {
+  revision?: number;
   patients: Patient[];
   outbox: OutboxItem[];
   resolvedAlarms?: Record<string, "sent" | "dismissed">;
   timelines?: Record<string, TimelineEvent[]>;
   catalog?: ClinicCatalog;
+  waitlist?: WaitEntry[];
+  dismissedPredictions?: string[];
+  invoices?: Invoice[];
+  invoiceSeq?: number;
 }
 
 export function isOffline() {
@@ -35,6 +40,11 @@ export function readSnapshot(): Snapshot | null {
       resolvedAlarms: parsed.resolvedAlarms ?? {},
       timelines: parsed.timelines,
       catalog: parsed.catalog,
+      waitlist: parsed.waitlist ?? [],
+      dismissedPredictions: parsed.dismissedPredictions ?? [],
+      invoices: parsed.invoices ?? [],
+      invoiceSeq: parsed.invoiceSeq ?? 0,
+      revision: parsed.revision ?? 0,
     };
   } catch {
     return null;

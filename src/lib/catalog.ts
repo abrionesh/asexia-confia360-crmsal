@@ -14,20 +14,20 @@ export function weekHours(open: string, close: string, closedDays: number[]): Op
   }));
 }
 
-const PRESET: Record<string, Pick<Activity, "cost" | "color" | "code" | "professionalIds">> = {
-  armonizacion: { cost: 780, color: "#1C3D36", code: "01", professionalIds: ["elena"] },
-  implantes: { cost: 4100, color: "#3D4F7C", code: "02", professionalIds: ["raquel"] },
-  "laser-co2": { cost: 420, color: "#0E6B6B", code: "03", professionalIds: ["elena"] },
-  blefaro: { cost: 1600, color: "#6B3A4A", code: "04", professionalIds: ["inigo"] },
-  rino: { cost: 3400, color: "#8A5A2B", code: "05", professionalIds: ["inigo"] },
-  botox: { cost: 210, color: "#1F6B4A", code: "06", professionalIds: ["elena"] },
-  capilar: { cost: 640, color: "#4A5C3A", code: "07", professionalIds: ["elena"] },
+const PRESET: Record<string, Pick<Activity, "cost" | "color" | "code" | "professionalIds"> & { recallDays?: number }> = {
+  armonizacion: { cost: 780, color: "#1C3D36", code: "01", professionalIds: ["elena"], recallDays: 180 },
+  implantes: { cost: 4100, color: "#3D4F7C", code: "02", professionalIds: ["raquel"], recallDays: 7 },
+  "laser-co2": { cost: 420, color: "#0E6B6B", code: "03", professionalIds: ["elena"], recallDays: 30 },
+  blefaro: { cost: 1600, color: "#6B3A4A", code: "04", professionalIds: ["inigo"], recallDays: 15 },
+  rino: { cost: 3400, color: "#8A5A2B", code: "05", professionalIds: ["inigo"], recallDays: 15 },
+  botox: { cost: 210, color: "#1F6B4A", code: "06", professionalIds: ["elena"], recallDays: 120 },
+  capilar: { cost: 640, color: "#4A5C3A", code: "07", professionalIds: ["elena"], recallDays: 30 },
   invisalign: { cost: 1800, color: "#3D4F7C", code: "08", professionalIds: ["raquel"] },
-  "laser-vascular": { cost: 380, color: "#0E6B6B", code: "09", professionalIds: ["elena"] },
-  rejuvenecimiento: { cost: 1900, color: "#C45C26", code: "10", professionalIds: ["inigo", "elena"] },
-  hidrafacial: { cost: 40, color: "#1F6B4A", code: "11", professionalIds: ["clara"] },
+  "laser-vascular": { cost: 380, color: "#0E6B6B", code: "09", professionalIds: ["elena"], recallDays: 30 },
+  rejuvenecimiento: { cost: 1900, color: "#C45C26", code: "10", professionalIds: ["inigo", "elena"], recallDays: 90 },
+  hidrafacial: { cost: 40, color: "#1F6B4A", code: "11", professionalIds: ["clara"], recallDays: 28 },
   revision: { cost: 0, color: "#4A5C3A", code: "12", professionalIds: ["elena", "inigo", "raquel"] },
-  protesis: { cost: 1400, color: "#3D4F7C", code: "13", professionalIds: ["raquel"] },
+  protesis: { cost: 1400, color: "#3D4F7C", code: "13", professionalIds: ["raquel"], recallDays: 7 },
 };
 
 export function defaultProfessionals(): Professional[] {
@@ -104,6 +104,7 @@ export function normalizeCatalog(input: {
       links: activity.links ?? [],
       professionalIds: activity.professionalIds ?? preset?.professionalIds ?? [],
       files: activity.files ?? [],
+      recallDays: activity.recallDays ?? preset?.recallDays,
     } satisfies Activity;
   });
   return {

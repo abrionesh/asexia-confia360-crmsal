@@ -31,6 +31,8 @@ import type {
   PipelineStage,
   TimelineEvent,
   VisitInput,
+  Invoice,
+  WaitEntry,
 } from "./types";
 import { PIPELINE_STAGES } from "./types";
 import { buildAlarms } from "./mock/alarms";
@@ -40,7 +42,8 @@ import { seedPatients } from "./mock/patients";
 import { seedTimelines } from "./mock/timeline";
 import { attachClinic, seedCatalog } from "./mock/clinic";
 import { normalizeCatalog } from "../catalog";
-import { isOffline, readSnapshot, writeSnapshot, type OutboxItem } from "./persist";
+import { isOffline, readSnapshot, writeSnapshot, type OutboxItem, type Snapshot } from "./persist";
+import { scheduleProblem, firstOpening } from "../schedule";
 
 const restored = typeof window !== "undefined" ? readSnapshot() : null;
 let patients: Patient[] = restored?.patients?.length
@@ -49,6 +52,11 @@ let patients: Patient[] = restored?.patients?.length
 let outbox: OutboxItem[] = restored?.outbox ?? [];
 let resolvedAlarms: Record<string, "sent" | "dismissed"> = restored?.resolvedAlarms ?? {};
 let catalog: ClinicCatalog = normalizeCatalog(restored?.catalog ?? seedCatalog());
+let waitlist: WaitEntry[] = restored?.waitlist ?? [];
+let dismissedPredictions: string[] = restored?.dismissedPredictions ?? [];
+let invoices: Invoice[] = restored?.invoices ?? [];
+let invoiceSeq = restored?.invoiceSeq ?? 0;
+let revision = restored?.revision ?? 0;
 const timelines: Record<string, TimelineEvent[]> = restored?.timelines
   ? restored.timelines
   : Object.fromEntries(
@@ -58,8 +66,52 @@ const timelines: Record<string, TimelineEvent[]> = restored?.timelines
       ]),
     );
 
+function snapshotNow(): Snapshot {
+  return {
+    revision,
+    patients,
+    outbox,
+    resolvedAlarms,
+    timelines,
+    catalog,
+    waitlist,
+    dismissedPredictions,
+    invoices,
+    invoiceSeq,
+  };
+}
+
 function persist() {
-  writeSnapshot({ patients, outbox, resolvedAlarms, timelines, catalog });
+  revision += 1;
+  const snap = snapshotNow();
+  writeSnapshot(snap);
+  if (typeof window === "undefined") return;
+  void import("./sync").then((mod) => mod.publishSnapshot(snap));
+}
+
+export function applySnapshot(next: Snapshot) {
+  patients = next.patients?.length ? next.patients : patients;
+  outbox = next.outbox ?? [];
+  resolvedAlarms = next.resolvedAlarms ?? {};
+  catalog = normalizeCatalog(next.catalog ?? catalog);
+  waitlist = next.waitlist ?? [];
+  dismissedPredictions = next.dismissedPredictions ?? [];
+  invoices = next.invoices ?? [];
+  invoiceSeq = next.invoiceSeq ?? invoiceSeq;
+  revision = next.revision ?? revision;
+  if (next.timelines) {
+    for (const key of Object.keys(timelines)) delete timelines[key];
+    Object.assign(timelines, next.timelines);
+  }
+  writeSnapshot(snapshotNow());
+}
+
+export function localRevision() {
+  return revision;
+}
+
+export function currentSnapshot() {
+  return snapshotNow();
 }
 
 function queueMove(id: string, stage: PipelineStage) {
@@ -108,7 +160,7 @@ const BIRTHDAY_WINDOW = 7 * 24 * 3_600_000;
 
 function pushEvent(
   patientId: string,
-  event: Pick<TimelineEvent, "channel" | "direction" | "title" | "body">,
+  event: Pick<TimelineEvent, "channel" | "direction" | "title" | "body" | "delivery">,
 ) {
   const entry: TimelineEvent = {
     id: `ev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -133,7 +185,6 @@ function createMockClient(): AsexiAApi {
     async listPipeline() {
       if (isOffline()) return clone(patients);
       await wait(720);
-      persist();
       return clone(patients);
     },
     async getPatient(id) {
@@ -176,7 +227,7 @@ function createMockClient(): AsexiAApi {
       if (!isOffline()) await wait(480);
       const now = Date.now();
       return clone(
-        withResolution(buildAlarms(patients, now))
+        withResolution(buildAlarms(patients, now, catalog))
           .filter(
             (alarm) =>
               alarm.status !== "sent" &&
@@ -190,7 +241,7 @@ function createMockClient(): AsexiAApi {
     async listOpenAlarms() {
       if (!isOffline()) await wait(360);
       return clone(
-        withResolution(buildAlarms(patients))
+        withResolution(buildAlarms(patients, Date.now(), catalog))
           .filter((alarm) => alarm.status !== "sent" && alarm.status !== "dismissed")
           .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()),
       );
@@ -198,14 +249,14 @@ function createMockClient(): AsexiAApi {
     async listPatientAlarms(patientId) {
       if (!isOffline()) await wait(420);
       return clone(
-        withResolution(buildAlarms(patients.filter((patient) => patient.id === patientId))).filter(
+        withResolution(buildAlarms(patients.filter((patient) => patient.id === patientId), Date.now(), catalog)).filter(
           (alarm) => alarm.status !== "dismissed",
         ),
       );
     },
     async resolveAlarm(id, status) {
       if (!isOffline()) await wait(180);
-      const alarm = withResolution(buildAlarms(patients)).find((item) => item.id === id);
+      const alarm = withResolution(buildAlarms(patients, Date.now(), catalog)).find((item) => item.id === id);
       if (!alarm) return null;
       resolvedAlarms = { ...resolvedAlarms, [id]: status };
       if (status === "sent") {
@@ -245,15 +296,16 @@ function createMockClient(): AsexiAApi {
       if (!patient) return null;
       const title =
         entry.channel === "whatsapp"
-          ? "WhatsApp enviado"
+          ? "WhatsApp"
           : entry.channel === "email"
-            ? "Correo enviado"
+            ? "Correo"
             : "Nota de ficha";
       pushEvent(patientId, {
         channel: entry.channel,
         direction: entry.channel === "system" ? "internal" : "outbound",
         title,
         body: entry.body.trim(),
+        delivery: entry.channel === "system" ? undefined : "preparado",
       });
       return clone(patchPatient(patientId, (current) => current));
     },
@@ -268,6 +320,14 @@ function createMockClient(): AsexiAApi {
       }
       const activity = catalog.activities.find((item) => item.id === input.activityId);
       const room = catalog.rooms.find((item) => item.id === input.roomId);
+      const professional = input.professional || patient.assignedTo;
+      const problem = scheduleProblem(patients, catalog, {
+        at: input.at,
+        durationMin: activity?.durationMin ?? 30,
+        roomId: input.roomId,
+        professional,
+      });
+      if (problem) throw new Error(`agenda: ${problem}`);
       const visit = {
         id: `visit-${Date.now()}`,
         at: input.at,
@@ -276,7 +336,7 @@ function createMockClient(): AsexiAApi {
         roomId: input.roomId,
         roomName: room?.name ?? "Sala",
         durationMin: activity?.durationMin ?? 30,
-        professional: input.professional || patient.assignedTo,
+        professional,
         status: "programada" as const,
         notes: input.notes.trim(),
         price: activity?.price ?? 0,
@@ -572,6 +632,107 @@ function createMockClient(): AsexiAApi {
           ),
         });
       }
+      persist();
+      return true;
+    },
+    async dismissPrediction(id: string) {
+      dismissedPredictions = [...new Set([...dismissedPredictions, id])];
+      persist();
+      return [...dismissedPredictions];
+    },
+    async listDismissed() {
+      return [...dismissedPredictions];
+    },
+    async listWait() {
+      return clone(waitlist);
+    },
+    async addWait(patientId: string, activityId: string) {
+      const patient = patients.find((item) => item.id === patientId);
+      const activity = catalog.activities.find((item) => item.id === activityId);
+      if (!patient || !activity) return null;
+      const entry: WaitEntry = {
+        id: `wait-${Date.now()}`,
+        patientId,
+        patientName: patient.fullName,
+        activityId,
+        activityName: activity.name,
+        createdAt: new Date().toISOString(),
+      };
+      waitlist = [entry, ...waitlist];
+      persist();
+      return clone(entry);
+    },
+    async removeWait(id: string) {
+      waitlist = waitlist.filter((item) => item.id !== id);
+      persist();
+      return true;
+    },
+    async placeWait(id: string, roomId: string, day: string) {
+      const entry = waitlist.find((item) => item.id === id);
+      if (!entry) return null;
+      const patient = patients.find((item) => item.id === entry.patientId);
+      const activity = catalog.activities.find((item) => item.id === entry.activityId);
+      if (!patient || !activity) return null;
+      const at = firstOpening(patients, catalog, new Date(day), activity.durationMin, roomId, patient.assignedTo);
+      if (!at) throw new Error("agenda: No hay hueco ese día para esta duración.");
+      const saved = await this.addVisit(entry.patientId, {
+        at,
+        activityId: entry.activityId,
+        roomId,
+        professional: patient.assignedTo,
+        notes: "Desde la lista de espera.",
+      });
+      if (!saved) return null;
+      waitlist = waitlist.filter((item) => item.id !== id);
+      persist();
+      return saved;
+    },
+    async markDelivery(patientId, eventId, delivery: "enviado" | "fallido") {
+      const list = timelines[patientId];
+      if (!list?.some((event) => event.id === eventId)) return false;
+      timelines[patientId] = list.map((event) => (event.id === eventId ? { ...event, delivery } : event));
+      persist();
+      return true;
+    },
+    async issueInvoice(patientId, paymentId, vatRate: number) {
+      const patient = patients.find((item) => item.id === patientId);
+      const payment = patient?.payments?.find((item) => item.id === paymentId && item.status === "cobrado");
+      if (!patient || !payment) return null;
+      const existing = invoices.find((item) => item.paymentId === paymentId);
+      if (existing) return clone(existing);
+      invoiceSeq += 1;
+      const year = new Date().getFullYear();
+      const total = payment.amount;
+      const rate = vatRate > 0 ? vatRate : 0;
+      const base = rate ? Math.round((total / (1 + rate / 100)) * 100) / 100 : total;
+      const invoice: Invoice = {
+        id: `inv-${invoiceSeq}`,
+        number: `ASE-${year}-${String(invoiceSeq).padStart(4, "0")}`,
+        at: new Date().toISOString(),
+        patientId,
+        patientName: patient.fullName,
+        concept: payment.concept,
+        base,
+        vatRate: rate,
+        vat: Math.round((total - base) * 100) / 100,
+        total,
+        paymentId,
+      };
+      invoices = [invoice, ...invoices];
+      pushEvent(patientId, { channel: "system", direction: "internal", title: `Factura ${invoice.number}`, body: payment.concept });
+      persist();
+      return clone(invoice);
+    },
+    async listInvoices() {
+      return clone(invoices);
+    },
+    async deletePatient(patientId: string) {
+      if (!patients.some((item) => item.id === patientId)) return false;
+      patients = patients.filter((item) => item.id !== patientId);
+      delete timelines[patientId];
+      waitlist = waitlist.filter((item) => item.patientId !== patientId);
+      invoices = invoices.filter((item) => item.patientId !== patientId);
+      outbox = outbox.filter((item) => item.patientId !== patientId);
       persist();
       return true;
     },

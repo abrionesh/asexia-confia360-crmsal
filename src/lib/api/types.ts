@@ -205,6 +205,8 @@ export interface Activity {
   links: ActivityLink[];
   professionalIds: string[];
   files?: ClinicFile[];
+  /** Days after a completed visit before a recall alarm. Empty means no recall. */
+  recallDays?: number;
 }
 
 export interface Professional {
@@ -282,11 +284,35 @@ export interface TimelineEvent {
   durationSec?: number;
   agent?: string;
   transcript?: VoiceTurn[];
+  delivery?: "preparado" | "enviado" | "fallido";
 }
 
 export interface VoiceTurn {
   speaker: "agent" | "patient";
   text: string;
+}
+
+export interface WaitEntry {
+  id: string;
+  patientId: string;
+  patientName: string;
+  activityId: string;
+  activityName: string;
+  createdAt: string;
+}
+
+export interface Invoice {
+  id: string;
+  number: string;
+  at: string;
+  patientId: string;
+  patientName: string;
+  concept: string;
+  base: number;
+  vatRate: number;
+  vat: number;
+  total: number;
+  paymentId?: string;
 }
 
 export interface CopilotMessage {
@@ -330,6 +356,16 @@ export interface AsexiAApi {
   collectPayment(patientId: string, paymentId: string): Promise<Patient | null>;
   attachFile(target: FileTarget, file: Omit<ClinicFile, "id" | "addedAt">): Promise<ClinicFile | null>;
   removeFile(target: FileTarget, fileId: string): Promise<boolean>;
+  dismissPrediction(id: string): Promise<string[]>;
+  listDismissed(): Promise<string[]>;
+  listWait(): Promise<WaitEntry[]>;
+  addWait(patientId: string, activityId: string): Promise<WaitEntry | null>;
+  removeWait(id: string): Promise<boolean>;
+  placeWait(id: string, roomId: string, day: string): Promise<Patient | null>;
+  markDelivery(patientId: string, eventId: string, delivery: "enviado" | "fallido"): Promise<boolean>;
+  issueInvoice(patientId: string, paymentId: string, vatRate: number): Promise<Invoice | null>;
+  listInvoices(): Promise<Invoice[]>;
+  deletePatient(patientId: string): Promise<boolean>;
 }
 
 export function stageMeta(id: PipelineStage) {

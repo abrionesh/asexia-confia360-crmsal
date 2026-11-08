@@ -8,6 +8,7 @@ import { StatusChrome } from "@/components/layout/status-chrome";
 import { VoiceBar } from "@/components/layout/voice-bar";
 import { Input } from "@/components/ui/input";
 import { useUiStore } from "@/lib/store/ui";
+import { ClinicSync } from "@/lib/api/sync";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -101,6 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         ) : null}
+        <ClinicSync />
       </header>
 
       <main className={cn("mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6", "pb-40")}>

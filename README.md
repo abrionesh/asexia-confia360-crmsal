@@ -1,30 +1,27 @@
 # AsexiA Suite 360
 
-CRM inicial de salud, adaptable a otros sectores: gestión de clientes, canvas, agenda, cobros, salas y alertas.
+CRM de clínica, adaptable a otros sectores: pipeline, ficha, agenda, cobros, salas y alertas.
 
-Capa de presentación (PWA) para la gestión comercial y operativa de clínicas.
-React + TypeScript + Tailwind CSS. Los datos son mock con latencia simulada,
-listos para sustituirse por REST o XML-RPC (Odoo) sin tocar las vistas.
+PWA mobile-first. React + TypeScript + Tailwind. Los datos viven en el aparato y se sincronizan con el libro compartido de la clínica mientras hay red.
 
 ## Vistas
 
-- **Pipeline Kanban** (`/`) — columnas Nuevo Contacto, Cualificado por IA, Cita Confirmada, Facturado.
-- **Ficha 360** (`/pacientes/$id`) — ficha de contacto + timeline unificado (WhatsApp y transcripciones de voz).
-- **Copiloto IA** — FAB persistente que abre un panel lateral de asistencia.
+- **Tablero** (`/`) — pipeline comercial.
+- **Actuar** (`/actuar`) — alarmas, predicciones, WhatsApp y lista de espera.
+- **Mandos** (`/mandos`) — indicadores, filtro por profesional o sala, exportación del periodo.
+- **Agenda** (`/agenda`) — citas, huecos y lista de espera.
+- **Admin** (`/admin`) — actividades, duración, precio, días de recuerdo, horarios y salas.
+- **Ficha** (`/pacientes/$id`) — contacto, economía, citas, pagos, factura, historial y archivos.
 
-## Sustituir el mock por API real
+## Contrato
 
-El contrato vive en `src/lib/api/types.ts` (`AsexiAApi`).
-La implementación mock está en `src/lib/api/client.ts`.
-
-1. Implemente `createRestClient` o `createXmlRpcClient` que cumpla `AsexiAApi`.
-2. Exporte esa instancia como `api` en `src/lib/api/client.ts`.
-3. Las vistas (`components/kanban`, `components/patient`, `components/copilot`) no cambian.
+La interfaz está en `src/lib/api/types.ts` (`AsexiAApi`).
+La implementación actual está en `src/lib/api/client.ts`.
 
 ## Scripts
 
 ```bash
-npm run dev          # desarrollo
-npm run build        # producción
-npm run typecheck    # TypeScript
+npm run dev
+npm run build
+npm run typecheck
 ```

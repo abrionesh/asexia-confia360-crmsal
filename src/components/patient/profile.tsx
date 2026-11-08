@@ -1,7 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { api, type Patient, type TimelineEvent } from "@/lib/api";
+import { downloadPatientFile } from "@/lib/export-csv";
 import { ContactPanel } from "./contact-panel";
 import { PatientAlarms } from "@/components/alarms/queue";
 import { ActionBar, FileCanvas } from "./record";
@@ -48,11 +50,46 @@ export function PatientProfile({ id }: { id: string }) {
             <div className="flex min-w-0 flex-col gap-5">
               <FileCanvas patient={patient} />
               <PatientAlarms patientId={patient.id} />
-              <Timeline events={timelineQuery.data ?? []} />
+              <Timeline events={timelineQuery.data ?? []} patientId={patient.id} />
+              <Privacy patientId={patient.id} patient={patient} timeline={timelineQuery.data ?? []} />
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function Privacy({ patientId, patient, timeline }: { patientId: string; patient: Patient; timeline: TimelineEvent[] }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const remove = useMutation({
+    mutationFn: () => api.deletePatient(patientId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      toast.success("Ficha borrada de este libro");
+      void navigate({ to: "/" });
+    },
+  });
+  return (
+    <section className="rounded-xl bg-surface p-4 shadow-border">
+      <p className="label-kicker">Datos de la persona</p>
+      <h2 className="mt-1 font-display text-xl font-medium text-ink">Sacar o borrar</h2>
+      <p className="mt-2 text-sm text-ink-muted">La copia incluye la ficha y el historial. Borrar la quita del libro de la clínica.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" className="h-11 rounded-md bg-surface px-3 text-sm font-medium text-ink shadow-border" onClick={() => downloadPatientFile(patient, timeline)}>
+          Descargar datos
+        </button>
+        <button
+          type="button"
+          className="h-11 rounded-md px-3 text-sm font-medium text-ink-muted"
+          onClick={() => {
+            if (window.confirm("¿Borrar esta ficha y su historial?")) remove.mutate();
+          }}
+        >
+          Borrar ficha
+        </button>
+      </div>
+    </section>
   );
 }

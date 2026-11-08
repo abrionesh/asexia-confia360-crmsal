@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type { ClinicCatalog } from "@/lib/api/types";
 import { addDays, allPayments, allVisits, occupancy, sameDay, startOfDay, type AgendaVisit } from "@/lib/occupancy";
@@ -76,7 +77,69 @@ export function Agenda() {
       {mode === "semana" ? <WeekView anchor={anchor} setAnchor={setAnchor} visits={visits} catalog={data} showHours={showHours} doctor={doctor} /> : null}
       {mode === "mes" ? <MonthView anchor={anchor} setAnchor={setAnchor} onPickDay={(day) => { setAnchor(day); setMode("dia"); }} visits={visits} catalog={data} /> : null}
       {mode === "fechas" ? <RangeView anchor={anchor} setAnchor={setAnchor} rangeEnd={rangeEnd} setRangeEnd={setRangeEnd} visits={visits} catalog={data} showHours={showHours} doctor={doctor} /> : null}
+      <Waitlist day={anchor} patients={pipeline.data} catalog={data} />
     </div>
+  );
+}
+
+function Waitlist({ day, patients, catalog }: { day: Date; patients: { id: string; fullName: string }[]; catalog: ClinicCatalog }) {
+  const queryClient = useQueryClient();
+  const wait = useQuery({ queryKey: ["wait"], queryFn: () => api.listWait() });
+  const [patientId, setPatientId] = useState(patients[0]?.id ?? "");
+  const [activityId, setActivityId] = useState(catalog.activities[0]?.id ?? "");
+  const [roomId, setRoomId] = useState(catalog.rooms[0]?.id ?? "");
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["wait"] });
+    void queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+  };
+  const add = useMutation({
+    mutationFn: () => api.addWait(patientId, activityId),
+    onSuccess: () => {
+      refresh();
+      toast.success("En la lista de espera");
+    },
+  });
+  const place = useMutation({
+    mutationFn: (id: string) => api.placeWait(id, roomId, day.toISOString()),
+    onSuccess: () => {
+      refresh();
+      toast.success("Colocado en el primer hueco del día");
+    },
+    onError: (error: Error) => toast.error(error.message.startsWith("agenda:") ? error.message.slice(8) : "No cabe en el día"),
+  });
+  const remove = useMutation({ mutationFn: (id: string) => api.removeWait(id), onSuccess: refresh });
+
+  return (
+    <section className="rounded-xl bg-surface p-4 shadow-border">
+      <p className="label-kicker">Lista de espera</p>
+      <h2 className="mt-1 font-display text-xl font-medium text-ink">Huecos del día</h2>
+      <div className="mt-3 grid gap-2">
+        <select aria-label="Paciente en espera" value={patientId} onChange={(event) => setPatientId(event.target.value)} className="h-11 rounded-md bg-bg px-3 text-sm">
+          {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.fullName}</option>)}
+        </select>
+        <select aria-label="Actividad en espera" value={activityId} onChange={(event) => setActivityId(event.target.value)} className="h-11 rounded-md bg-bg px-3 text-sm">
+          {catalog.activities.map((activity) => <option key={activity.id} value={activity.id}>{activity.name}</option>)}
+        </select>
+        <select aria-label="Sala para colocar" value={roomId} onChange={(event) => setRoomId(event.target.value)} className="h-11 rounded-md bg-bg px-3 text-sm">
+          {catalog.rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
+        </select>
+        <button type="button" onClick={() => add.mutate()} className="h-11 rounded-md bg-accent text-sm font-medium text-accent-fg">Añadir a la espera</button>
+      </div>
+      <ul className="mt-4 flex flex-col gap-2">
+        {(wait.data ?? []).map((entry) => (
+          <li key={entry.id} className="flex items-center justify-between gap-2 text-sm">
+            <span className="min-w-0">
+              <span className="block truncate font-medium text-ink">{entry.patientName}</span>
+              <span className="text-xs text-ink-muted">{entry.activityName}</span>
+            </span>
+            <span className="flex shrink-0 gap-2">
+              <button type="button" className="text-xs font-medium text-accent" onClick={() => place.mutate(entry.id)}>Colocar</button>
+              <button type="button" className="text-xs text-ink-muted" onClick={() => remove.mutate(entry.id)}>Quitar</button>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

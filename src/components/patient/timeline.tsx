@@ -1,10 +1,11 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { AudioLines, Mail, MessageCircle, Sparkles } from "lucide-react";
-import type { TimelineEvent, VoiceTurn } from "@/lib/api";
+import { api, type TimelineEvent, type VoiceTurn } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export function Timeline({ events }: { events: TimelineEvent[] }) {
+export function Timeline({ events, patientId }: { events: TimelineEvent[]; patientId?: string }) {
   const ordered = [...events].sort(
     (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime(),
   );
@@ -47,7 +48,7 @@ export function Timeline({ events }: { events: TimelineEvent[] }) {
                 <Sparkles className="size-3" />
               )}
             </span>
-            <EventCard event={event} />
+            <EventCard event={event} patientId={patientId} />
           </li>
         ))}
       </ol>
@@ -55,7 +56,7 @@ export function Timeline({ events }: { events: TimelineEvent[] }) {
   );
 }
 
-function EventCard({ event }: { event: TimelineEvent }) {
+function EventCard({ event, patientId }: { event: TimelineEvent; patientId?: string }) {
   const stamp = format(new Date(event.at), "d MMM · HH:mm", { locale: es });
 
   if (event.channel === "whatsapp") {
@@ -76,6 +77,7 @@ function EventCard({ event }: { event: TimelineEvent }) {
         >
           {event.body}
         </div>
+        <Delivery event={event} patientId={patientId} />
       </div>
     );
   }
@@ -112,6 +114,28 @@ function EventCard({ event }: { event: TimelineEvent }) {
     <div>
       <Meta label={event.title} stamp={stamp} />
       <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">{event.body}</p>
+      <Delivery event={event} patientId={patientId} />
+    </div>
+  );
+}
+
+function Delivery({ event, patientId }: { event: TimelineEvent; patientId?: string }) {
+  const queryClient = useQueryClient();
+  const mark = useMutation({
+    mutationFn: (delivery: "enviado" | "fallido") => api.markDelivery(patientId ?? "", event.id, delivery),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["timeline", patientId] }),
+  });
+  if (!event.delivery || !patientId) return null;
+  const label = event.delivery === "enviado" ? "Enviado" : event.delivery === "fallido" ? "No salió" : "Preparado";
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <span className="text-xs text-ink-subtle">{label}</span>
+      {event.delivery === "preparado" ? (
+        <>
+          <button type="button" className="text-xs font-medium text-accent" onClick={() => mark.mutate("enviado")}>Se envió</button>
+          <button type="button" className="text-xs text-ink-muted" onClick={() => mark.mutate("fallido")}>No salió</button>
+        </>
+      ) : null}
     </div>
   );
 }

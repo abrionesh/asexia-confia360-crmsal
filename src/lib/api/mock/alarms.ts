@@ -1,4 +1,4 @@
-import type { Alarm, AlarmChannel, CareItem, Patient, PipelineStage } from "../types";
+import type { Alarm, AlarmChannel, CareItem, ClinicCatalog, Patient, PipelineStage } from "../types";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -7,11 +7,11 @@ const DAY = 24 * HOUR;
  * Alarms are derived from the file, not typed by hand.
  * A stage only opens the rule; the file (cita, cuidados, silencio) decides if it fires.
  */
-export function buildAlarms(patients: Patient[], now = Date.now()): Alarm[] {
-  return patients.flatMap((patient) => alarmsFor(patient, now));
+export function buildAlarms(patients: Patient[], now = Date.now(), catalog?: ClinicCatalog): Alarm[] {
+  return patients.flatMap((patient) => alarmsFor(patient, now, catalog));
 }
 
-function alarmsFor(patient: Patient, now: number): Alarm[] {
+function alarmsFor(patient: Patient, now: number, catalog?: ClinicCatalog): Alarm[] {
   if (patient.stage === "lost") return [];
   const list: Alarm[] = [];
   const silence = silenceAlarm(patient, now);
@@ -33,6 +33,7 @@ function alarmsFor(patient: Patient, now: number): Alarm[] {
   }
   const satisfaction = satisfactionAlarm(patient, now);
   if (satisfaction) list.push(satisfaction);
+  if (catalog) list.push(...recallAlarms(patient, catalog, now));
   return list;
 }
 
@@ -252,4 +253,34 @@ function satisfactionAlarm(patient: Patient, now: number): Alarm | null {
     reason: "Han pasado más de 48 h de una visita y la ficha no tiene respuesta.",
     draft: `Una sola pregunta para ${patient.fullName}: bien, regular o mal.`,
   };
+}
+
+function recallAlarms(patient: Patient, catalog: ClinicCatalog, now: number): Alarm[] {
+  const alarms: Alarm[] = [];
+  for (const visit of patient.visits ?? []) {
+    if (visit.status !== "realizada") continue;
+    const activity = catalog.activities.find((item) => item.id === visit.activityId);
+    if (!activity?.recallDays) continue;
+    const doneAt = new Date(visit.at).getTime();
+    const due = doneAt + activity.recallDays * DAY;
+    const hasNext = (patient.visits ?? []).some(
+      (item) => item.status === "programada" && new Date(item.at).getTime() > doneAt,
+    );
+    if (hasNext || now < due - DAY || now > due + 14 * DAY) continue;
+    alarms.push({
+      id: `recall:${visit.id}`,
+      patientId: patient.id,
+      patientName: patient.fullName,
+      phone: patient.phone,
+      email: patient.email,
+      kind: "review",
+      channel: patient.preferredChannel === "email" ? "email" : "whatsapp",
+      status: now >= due ? "due" : "scheduled",
+      dueAt: new Date(due).toISOString(),
+      title: `Recordar ${activity.name}`,
+      reason: `La actividad pide aviso a los ${activity.recallDays} días y no hay otra cita.`,
+      draft: `Hola ${patient.firstName}, han pasado ${activity.recallDays} días de ${activity.name}. ¿Reservamos la siguiente sesión?`,
+    });
+  }
+  return alarms;
 }

@@ -1,4 +1,4 @@
-import type { Patient } from "@/lib/api/types";
+import type { Invoice, Patient } from "@/lib/api/types";
 import { economics } from "@/lib/economics";
 
 const WIN: Record<string, string> = {
@@ -59,7 +59,33 @@ export function downloadQuote(patient: Patient) {
     commands.push(`(${pdfText(line)}) Tj`);
   });
   commands.push("ET");
-  const stream = commands.join("\n");
+  savePdf(commands.join("\n"), `presupuesto-${patient.id}.pdf`);
+}
+
+export function downloadInvoice(invoice: Invoice) {
+  const lines = [
+    "AsexiA Castellana",
+    `Factura ${invoice.number}`,
+    "",
+    invoice.patientName,
+    invoice.concept,
+    "",
+    `Base ${money(invoice.base)}`,
+    invoice.vatRate ? `IVA ${invoice.vatRate}% ${money(invoice.vat)}` : "IVA exento",
+    `Total ${money(invoice.total)}`,
+    "",
+    "Documento simplificado de la clínica.",
+  ];
+  const commands = ["BT", "/F1 18 Tf", "48 780 Td"];
+  lines.forEach((line, index) => {
+    if (index > 0) commands.push("0 -22 Td");
+    commands.push(`(${pdfText(line)}) Tj`);
+  });
+  commands.push("ET");
+  savePdf(commands.join("\n"), `${invoice.number}.pdf`);
+}
+
+function savePdf(stream: string, filename: string) {
   const objects = [
     "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n",
     "2 0 obj << /Type /Pages /Count 1 /Kids [3 0 R] >> endobj\n",
@@ -84,7 +110,7 @@ export function downloadQuote(patient: Patient) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `presupuesto-${patient.id}.pdf`;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }

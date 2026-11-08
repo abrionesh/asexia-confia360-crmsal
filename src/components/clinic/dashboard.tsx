@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { api } from "@/lib/api";
+import { api, type Patient } from "@/lib/api";
 import { buildKpis, moneyShare, periodRange, previousRange, trendPercent, type PeriodId } from "@/lib/kpis";
 import { formatMoney } from "@/lib/utils";
+import { downloadPeriodCsv } from "@/lib/export-csv";
 import { useUiStore } from "@/lib/store/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -24,6 +25,8 @@ export function Dashboard() {
   const [from, setFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [to, setTo] = useState(() => new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10));
   const [open, setOpen] = useState<string | null>("rentabilidad");
+  const [professional, setProfessional] = useState("");
+  const [roomId, setRoomId] = useState("");
 
   if (role !== "direccion") {
     return (
@@ -43,20 +46,22 @@ export function Dashboard() {
     );
   }
 
+  const data = scopePatients(pipeline.data, professional, roomId);
+  const viewCatalog = roomId ? { ...catalog.data, rooms: catalog.data.rooms.filter((room) => room.id === roomId) } : catalog.data;
   const range = periodRange(period, new Date(from), new Date(to));
   const previous = previousRange(range.start, range.end);
-  const kpi = buildKpis(pipeline.data, catalog.data, range.start, range.end);
-  const before = buildKpis(pipeline.data, catalog.data, previous.start, previous.end);
+  const kpi = buildKpis(data, viewCatalog, range.start, range.end);
+  const before = buildKpis(data, viewCatalog, previous.start, previous.end);
   const margin = kpi.income - kpi.cost;
   const marginBefore = before.income - before.cost;
   const occupation = kpi.capacity ? Math.round((kpi.booked / kpi.capacity) * 100) : 0;
-  const people = pipeline.data.filter((patient) => patient.stage !== "lost");
-  const closed = pipeline.data.filter((patient) => patient.stage === "invoiced" || patient.billed);
-  const openPipeline = pipeline.data.filter((patient) => patient.stage !== "invoiced" && patient.stage !== "lost" && !patient.billed);
+  const people = data.filter((patient) => patient.stage !== "lost");
+  const closed = data.filter((patient) => patient.stage === "invoiced" || patient.billed);
+  const openPipeline = data.filter((patient) => patient.stage !== "invoiced" && patient.stage !== "lost" && !patient.billed);
   const pipelineValue = openPipeline.reduce((sum, patient) => sum + patient.estimatedValue, 0);
   const closedValue = closed.reduce((sum, patient) => sum + patient.estimatedValue, 0);
-  const newClients = pipeline.data.filter((patient) => inRange(patient.createdAt, range.start, range.end)).length;
-  const newClientsBefore = pipeline.data.filter((patient) => inRange(patient.createdAt, previous.start, previous.end)).length;
+  const newClients = data.filter((patient) => inRange(patient.createdAt, range.start, range.end)).length;
+  const newClientsBefore = data.filter((patient) => inRange(patient.createdAt, previous.start, previous.end)).length;
   const visits = kpi.treatments.reduce((sum, item) => sum + item.count, 0);
   const ticket = visits ? Math.round(kpi.income / visits) : 0;
   const conversion = pipeline.data.length ? Math.round((closed.length / pipeline.data.length) * 100) : 0;
@@ -89,6 +94,19 @@ export function Dashboard() {
       ) : (
         <p className="text-xs text-ink-subtle">{format(range.start, "d MMM", { locale: es })} – {format(new Date(range.end.getTime() - 1), "d MMM", { locale: es })}</p>
       )}
+      <div className="grid grid-cols-2 gap-2">
+        <select aria-label="Profesional" value={professional} onChange={(event) => setProfessional(event.target.value)} className="h-11 rounded-md bg-surface px-3 text-sm shadow-border">
+          <option value="">Todos los profesionales</option>
+          {catalog.data.professionals.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+        </select>
+        <select aria-label="Sala" value={roomId} onChange={(event) => setRoomId(event.target.value)} className="h-11 rounded-md bg-surface px-3 text-sm shadow-border">
+          <option value="">Todas las salas</option>
+          {catalog.data.rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
+        </select>
+      </div>
+      <button type="button" onClick={() => downloadPeriodCsv(data, range.start, range.end)} className="w-fit text-sm font-medium text-accent">
+        Exportar el periodo
+      </button>
 
       <section className="grid grid-cols-2 gap-3">
         <article className="rounded-xl bg-surface px-4 py-4 shadow-border">
@@ -210,6 +228,16 @@ function Bars({ rows }: { rows: { id: string; label: string; value: number; max:
       ))}
     </ul>
   );
+}
+
+function scopePatients(patients: Patient[], professional: string, roomId: string): Patient[] {
+  if (!professional && !roomId) return patients;
+  return patients.flatMap((patient) => {
+    const visits = (patient.visits ?? []).filter(
+      (visit) => (!professional || visit.professional === professional) && (!roomId || visit.roomId === roomId),
+    );
+    return visits.length === 0 ? [] : [{ ...patient, visits }];
+  });
 }
 
 function inRange(iso: string, start: Date, end: Date) {

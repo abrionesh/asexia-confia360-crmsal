@@ -253,6 +253,7 @@ function ActivityForm({
       <div className="grid grid-cols-2 gap-2">
         <Field label="Número" value={activity.code} onChange={(code) => set("code", code)} />
         <Field label="Duración (min)" value={String(activity.durationMin)} onChange={(value) => set("durationMin", Number(value) || 0)} />
+        <Field label="Recordar a los (días)" value={activity.recallDays ? String(activity.recallDays) : ""} onChange={(value) => set("recallDays", value ? Number(value) || undefined : undefined)} />
         <Field label="Sector" value={activity.sector} onChange={(sector) => set("sector", sector)} />
         <Field label="Subsector" value={activity.subsector} onChange={(subsector) => set("subsector", subsector)} />
         <Field label="Precio" value={String(activity.price)} onChange={(value) => set("price", Number(value) || 0)} />

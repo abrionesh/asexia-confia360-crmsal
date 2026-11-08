@@ -8,7 +8,7 @@ import { api, type AlarmChannel, type Patient } from "@/lib/api";
 import { economics } from "@/lib/economics";
 import { openMail, openWhatsApp } from "@/lib/outbound";
 import { formatMoney } from "@/lib/utils";
-import { downloadQuote } from "@/lib/quote-pdf";
+import { downloadInvoice, downloadQuote } from "@/lib/quote-pdf";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -142,7 +142,10 @@ export function FileCanvas({ patient }: { patient: Patient }) {
                   {format(new Date(payment.dueAt), "d MMM yyyy", { locale: es })} · {payment.status}
                 </span>
               </span>
-              <span className="tabular-nums text-ink">{formatMoney(payment.amount)}</span>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className="tabular-nums text-ink">{formatMoney(payment.amount)}</span>
+                {payment.status === "cobrado" ? <InvoiceButtons patientId={patient.id} paymentId={payment.id} /> : null}
+              </span>
             </li>
           ))}
         </ul>
@@ -173,6 +176,21 @@ export function FileCanvas({ patient }: { patient: Patient }) {
       <AlarmForm patient={patient} />
       <Satisfaction patient={patient} />
     </div>
+  );
+}
+
+function InvoiceButtons({ patientId, paymentId }: { patientId: string; paymentId: string }) {
+  const save = useMutation({
+    mutationFn: (vatRate: number) => api.issueInvoice(patientId, paymentId, vatRate),
+    onSuccess: (invoice) => {
+      if (invoice) downloadInvoice(invoice);
+    },
+  });
+  return (
+    <span className="flex gap-2">
+      <button type="button" className="text-xs font-medium text-accent" onClick={() => save.mutate(21)}>Factura</button>
+      <button type="button" className="text-xs text-ink-muted" onClick={() => save.mutate(0)}>Exenta</button>
+    </span>
   );
 }
 
@@ -259,9 +277,9 @@ function VisitForm({
       toast.success("Cita en el historial y en la agenda");
     },
     onError: (error: Error) => {
-      if (error.message === "consent") {
-        toast.error("Falta el consentimiento. No se programa quirófano.");
-      }
+      if (error.message === "consent") toast.error("Falta el consentimiento. No se programa quirófano.");
+      else if (error.message.startsWith("agenda:")) toast.error(error.message.slice(8));
+      else toast.error("No se pudo guardar la cita");
     },
   });
 

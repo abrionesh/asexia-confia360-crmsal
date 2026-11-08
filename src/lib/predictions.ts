@@ -7,6 +7,7 @@ export interface Prediction {
   title: string;
   reason: string;
   patientId?: string;
+  activityId?: string;
   to?: "/agenda" | "/mandos";
 }
 
@@ -38,6 +39,7 @@ export function buildPredictions(patients: Patient[], catalog: ClinicCatalog, no
         title: "Riesgo de no asistencia",
         reason: `${patient.fullName} ya faltó a una cita y tiene otra prevista.`,
         patientId: patient.id,
+        activityId: upcoming[0]?.activityId,
       });
     }
     if ((patient.stage === "new" || patient.stage === "qualified" || patient.stage === "proposal") && idleDays >= 3) {
@@ -89,6 +91,7 @@ export function buildPredictions(patients: Patient[], catalog: ClinicCatalog, no
         title: "Revisión sin programar",
         reason: `${patient.fullName} terminó ${done.activityName} y no tiene otra cita.`,
         patientId: patient.id,
+        activityId: "revision",
       });
     }
   }

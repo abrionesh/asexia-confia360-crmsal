@@ -2,9 +2,11 @@ import { useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, type ClinicFile, type FileTarget } from "@/lib/api";
+import { getClinicFile, putClinicFile } from "@/lib/api/book.functions";
+import { readLocalFile, saveLocalFile } from "@/lib/files-db";
 import { Button } from "@/components/ui/button";
 
-const MAX_BYTES = 200_000;
+const MAX_BYTES = 1_500_000;
 
 export function Attachments({
   target,
@@ -24,7 +26,18 @@ export function Attachments({
     void queryClient.invalidateQueries({ queryKey: ["timeline"] });
   };
   const add = useMutation({
-    mutationFn: (file: Omit<ClinicFile, "id" | "addedAt">) => api.attachFile(target, file),
+    mutationFn: async (file: Omit<ClinicFile, "id" | "addedAt">) => {
+      const saved = await api.attachFile(target, { name: file.name, mime: file.mime, size: file.size });
+      if (saved && file.dataUrl) {
+        await saveLocalFile(saved.id, file.dataUrl);
+        try {
+          await putClinicFile({ data: { id: saved.id, dataUrl: file.dataUrl } });
+        } catch {
+          /* the copy stays on this phone */
+        }
+      }
+      return saved;
+    },
     onSuccess: (saved) => {
       if (!saved) {
         toast.error("Guarde la ficha antes de adjuntar");
@@ -43,8 +56,7 @@ export function Attachments({
     const file = list?.[0];
     if (!file) return;
     if (file.size > MAX_BYTES) {
-      add.mutate({ name: file.name, mime: file.type || "application/octet-stream", size: file.size });
-      toast.message("Archivo grande: queda el nombre, no la copia, para no llenar el teléfono.");
+      toast.error("El archivo pasa de 1,5 MB. No se adjunta.");
       return;
     }
     const reader = new FileReader();
@@ -57,6 +69,26 @@ export function Attachments({
       });
     };
     reader.readAsDataURL(file);
+  }
+
+  async function openFile(file: ClinicFile) {
+    let url = await readLocalFile(file.id).catch(() => undefined);
+    if (!url) {
+      try {
+        url = (await getClinicFile({ data: { id: file.id } })) ?? undefined;
+      } catch {
+        url = undefined;
+      }
+      if (url) await saveLocalFile(file.id, url).catch(() => undefined);
+    }
+    if (!url) {
+      toast.message("El documento aún no está en este teléfono.");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = file.name;
+    link.click();
   }
 
   return (
@@ -86,14 +118,12 @@ export function Attachments({
             <li key={file.id} className="flex items-center justify-between gap-3 text-sm">
               <span className="min-w-0">
                 <span className="block truncate text-ink">{file.name}</span>
-                <span className="text-xs text-ink-subtle">{Math.max(1, Math.round(file.size / 1024))} KB{file.dataUrl ? "" : " · sin copia local"}</span>
+                <span className="text-xs text-ink-subtle">{Math.max(1, Math.round(file.size / 1024))} KB</span>
               </span>
               <span className="flex shrink-0 gap-2">
-                {file.dataUrl ? (
-                  <a href={file.dataUrl} download={file.name} className="text-xs font-medium text-accent">
-                    Abrir
-                  </a>
-                ) : null}
+                <button type="button" className="text-xs font-medium text-accent" onClick={() => void openFile(file)}>
+                  Abrir
+                </button>
                 <button type="button" className="text-xs font-medium text-ink-muted" onClick={() => remove.mutate(file.id)}>
                   Quitar
                 </button>
