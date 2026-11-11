@@ -67,7 +67,8 @@ export type LeadSource =
   | "WhatsApp"
   | "Web"
   | "Referral"
-  | "Llamada";
+  | "Llamada"
+  | "Mostrador";
 
 export interface Patient {
   id: string;
@@ -256,6 +257,23 @@ export interface ContactLog {
   body: string;
 }
 
+export interface AdmitInput {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  source: LeadSource;
+  kind: "posible" | "cliente";
+  interest: string;
+  visit?: VisitInput | null;
+}
+
+export interface AdmitResult {
+  patient: Patient;
+  /** False cuando el teléfono o el correo ya tenían ficha. */
+  created: boolean;
+}
+
 export interface VisitInput {
   at: string;
   activityId: string;
@@ -428,6 +446,7 @@ export interface AsexiAApi {
   issueInvoice(patientId: string, paymentId: string, vatRate: number): Promise<Invoice | null>;
   listInvoices(): Promise<Invoice[]>;
   deletePatient(patientId: string): Promise<boolean>;
+  admitPatient(input: AdmitInput): Promise<AdmitResult>;
   replyVisit(patientId: string, answer: "confirmada" | "no-puede"): Promise<string>;
   setVisitStatus(patientId: string, visitId: string, status: Visit["status"]): Promise<Patient | null>;
   ensurePortal(patientId: string): Promise<string | null>;

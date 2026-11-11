@@ -31,6 +31,7 @@ import type {
   PipelineStage,
   TimelineEvent,
   VisitInput,
+  AdmitInput,
   Invoice,
   WaitEntry,
   PayMethod,
@@ -198,6 +199,75 @@ function patchPatient(id: string, recipe: (patient: Patient) => Patient) {
   return next;
 }
 
+function bookVisit(patientId: string, input: VisitInput) {
+  const patient = patients.find((item) => item.id === patientId);
+  if (!patient) return null;
+  const surgical =
+    input.roomId === "quirofano" || input.activityId === "rino" || input.activityId === "blefaro";
+  if (surgical && !patient.consentSigned) {
+    throw new Error("consent");
+  }
+  const activity = catalog.activities.find((item) => item.id === input.activityId);
+  const room = catalog.rooms.find((item) => item.id === input.roomId);
+  const professional = input.professional || patient.assignedTo;
+  const problem = scheduleProblem(patients, catalog, {
+    at: input.at,
+    durationMin: activity?.durationMin ?? 30,
+    roomId: input.roomId,
+    professional,
+  });
+  if (problem) throw new Error(`agenda: ${problem}`);
+  const visit = {
+    id: `visit-${Date.now()}`,
+    at: input.at,
+    activityId: input.activityId,
+    activityName: activity?.name ?? "Actividad",
+    roomId: input.roomId,
+    roomName: room?.name ?? "Sala",
+    durationMin: activity?.durationMin ?? 30,
+    professional,
+    status: "programada" as const,
+    notes: input.notes.trim(),
+    price: activity?.price ?? 0,
+  };
+  const when = new Intl.DateTimeFormat("es-ES", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(input.at));
+  pushEvent(patientId, {
+    channel: "system",
+    direction: "internal",
+    title: "Cita programada",
+    body: `${visit.activityName} · ${visit.roomName} · ${when} · ${visit.durationMin} min · ${visit.professional}. ${visit.notes}`.trim(),
+  });
+  return patchPatient(patientId, (current) => {
+    const visits = [...(current.visits ?? []), visit];
+    const nextAt = visits
+      .filter((item) => item.status === "programada")
+      .map((item) => item.at)
+      .sort()[0];
+    return { ...current, visits, appointmentAt: nextAt ?? current.appointmentAt };
+  });
+}
+
+function digitsOf(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function findByContact(phone: string, email: string) {
+  const tail = digitsOf(phone).slice(-9);
+  if (tail.length >= 9) {
+    const byPhone = patients.find((patient) => digitsOf(patient.phone).endsWith(tail));
+    if (byPhone) return byPhone;
+  }
+  const mail = email.trim().toLowerCase();
+  if (!mail) return undefined;
+  return patients.find((patient) => patient.email.trim().toLowerCase() === mail);
+}
+
 function portalToken() {
   const alphabet = "abcdefghijkmnpqrstuvwxyz23456789";
   const bytes = new Uint8Array(24);
@@ -336,59 +406,8 @@ function createMockClient(): AsexiAApi {
     },
     async addVisit(patientId, input: VisitInput) {
       if (!isOffline()) await wait(220);
-      const patient = patients.find((item) => item.id === patientId);
-      if (!patient) return null;
-      const surgical =
-        input.roomId === "quirofano" || input.activityId === "rino" || input.activityId === "blefaro";
-      if (surgical && !patient.consentSigned) {
-        throw new Error("consent");
-      }
-      const activity = catalog.activities.find((item) => item.id === input.activityId);
-      const room = catalog.rooms.find((item) => item.id === input.roomId);
-      const professional = input.professional || patient.assignedTo;
-      const problem = scheduleProblem(patients, catalog, {
-        at: input.at,
-        durationMin: activity?.durationMin ?? 30,
-        roomId: input.roomId,
-        professional,
-      });
-      if (problem) throw new Error(`agenda: ${problem}`);
-      const visit = {
-        id: `visit-${Date.now()}`,
-        at: input.at,
-        activityId: input.activityId,
-        activityName: activity?.name ?? "Actividad",
-        roomId: input.roomId,
-        roomName: room?.name ?? "Sala",
-        durationMin: activity?.durationMin ?? 30,
-        professional,
-        status: "programada" as const,
-        notes: input.notes.trim(),
-        price: activity?.price ?? 0,
-      };
-      const when = new Intl.DateTimeFormat("es-ES", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(new Date(input.at));
-      pushEvent(patientId, {
-        channel: "system",
-        direction: "internal",
-        title: "Cita programada",
-        body: `${visit.activityName} · ${visit.roomName} · ${when} · ${visit.durationMin} min · ${visit.professional}. ${visit.notes}`.trim(),
-      });
-      return clone(
-        patchPatient(patientId, (current) => {
-          const visits = [...(current.visits ?? []), visit];
-          const nextAt = visits
-            .filter((item) => item.status === "programada")
-            .map((item) => item.at)
-            .sort()[0];
-          return { ...current, visits, appointmentAt: nextAt ?? current.appointmentAt };
-        }),
-      );
+      const updated = bookVisit(patientId, input);
+      return updated ? clone(updated) : null;
     },
     async addPayment(patientId, input: PaymentInput) {
       if (!isOffline()) await wait(180);
@@ -754,6 +773,80 @@ function createMockClient(): AsexiAApi {
     },
     async listInvoices() {
       return clone(invoices);
+    },
+    async admitPatient(input: AdmitInput) {
+      if (!isOffline()) await wait(220);
+      const firstName = input.firstName.trim();
+      const lastName = input.lastName.trim();
+      const phone = input.phone.trim();
+      const email = input.email.trim().toLowerCase();
+      if (!firstName) throw new Error("Escriba el nombre.");
+      if (digitsOf(phone).length < 9 && !email) throw new Error("Indique un teléfono o un correo.");
+      const interest = catalog.activities.find((item) => item.id === input.interest);
+      const existing = findByContact(phone, email);
+      let created = false;
+      let id = existing?.id ?? "";
+      if (existing) {
+        patchPatient(existing.id, (current) => ({
+          ...current,
+          phone: current.phone.trim() || phone,
+          email: current.email.trim() || email,
+          treatmentInterest: current.treatmentInterest || interest?.name || input.interest.trim() || current.treatmentInterest,
+          estimatedValue: current.estimatedValue || interest?.price || current.estimatedValue,
+          tags: current.tags.includes(input.kind) ? current.tags : [...current.tags, input.kind],
+        }));
+        pushEvent(existing.id, {
+          channel: "system",
+          direction: "internal",
+          title: "Ficha ya existente",
+          body: `Recepción retomó el alta. Origen ${input.source}. No se duplica.`,
+        });
+        persist();
+      } else {
+        created = true;
+        id = `p-${Date.now()}`;
+        const professional = input.visit?.professional || catalog.professionals[0]?.name || "Recepción";
+        const patient: Patient = {
+          id,
+          firstName,
+          lastName,
+          fullName: `${firstName} ${lastName}`.trim(),
+          phone,
+          email,
+          city: "",
+          clinic: patients[0]?.clinic || "Clínica",
+          treatmentInterest: interest?.name || "Por concretar",
+          estimatedValue: interest?.price ?? 0,
+          source: input.source,
+          stage: "new",
+          assignedTo: professional,
+          lastActivityAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          tags: [input.kind],
+          notes: "",
+          preferredChannel: phone ? "whatsapp" : "email",
+          visits: [],
+          payments: [],
+        };
+        patients = [patient, ...patients];
+        timelines[id] = [];
+        pushEvent(id, {
+          channel: "system",
+          direction: "internal",
+          title: "Alta",
+          body: `${input.kind === "posible" ? "Posible cliente" : "Cliente"} · ${input.source}`,
+        });
+        persist();
+      }
+      if (input.visit?.at) {
+        const booked = bookVisit(id, { ...input.visit, notes: input.visit.notes || "Alta de recepción" });
+        if (booked && (booked.stage === "new" || booked.stage === "lost")) {
+          patchPatient(id, (current) => ({ ...current, stage: "confirmed" }));
+        }
+      }
+      const patient = patients.find((item) => item.id === id);
+      if (!patient) throw new Error("No se pudo guardar la ficha.");
+      return clone({ patient, created });
     },
     async deletePatient(patientId: string) {
       if (!patients.some((item) => item.id === patientId)) return false;

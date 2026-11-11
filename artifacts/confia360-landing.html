@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConfIA360 — MUNDOConfÍA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@700;800;900&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --c:#A3E635;--b:#1F7A4D;
+  --dark:#000;--dark2:#1C1C1E;--dark3:#2C2C2E;
+  --glass:rgba(255,255,255,.05);--rule:rgba(255,255,255,.1);
+  --text:#F5F5F7;--muted:#86868B;
+  --grad:linear-gradient(90deg,#A3E635,#64D2FF);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Instrument Sans",-apple-system,sans-serif;background:#000;color:var(--text);-webkit-font-smoothing:antialiased}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 5%;background:rgba(0,0,0,.72);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.08)}
+.nav-l{display:flex;align-items:center;gap:10px;text-decoration:none;color:#fff}
+.nav-logo{width:36px;height:36px;border-radius:8px}
+.nav-wordmark{font-family:"Cabinet Grotesk",sans-serif;font-weight:800;font-size:1.1rem}
+.nav-wordmark em{font-style:normal;color:var(--c)}
+.nav-cta{background:#fff;color:#000;padding:10px 20px;border-radius:980px;text-decoration:none;font-weight:600;font-size:.85rem}
+.hero{padding:160px 5% 100px;text-align:center}
+.hero h1{font-family:"Cabinet Grotesk",sans-serif;font-size:clamp(2.4rem,6vw,4.2rem);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin-bottom:20px}
+.hero h1 .g{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{font-size:1.15rem;color:var(--muted);max-width:560px;margin:0 auto 36px;line-height:1.6}
+.btn-main{display:inline-block;background:#fff;color:#000;padding:14px 28px;border-radius:980px;text-decoration:none;font-weight:600}
+.section{padding:100px 5%}
+.section-inner{max-width:1100px;margin:0 auto}
+.section-label{font-size:.75rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--c);margin-bottom:12px}
+.section h2{font-family:"Cabinet Grotesk",sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;letter-spacing:-.025em;margin-bottom:16px}
+.section-sub{color:var(--muted);max-width:520px;margin-bottom:40px;line-height:1.6}
+.modules-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.module-group{background:var(--glass);border:1px solid var(--rule);border-radius:18px;padding:24px}
+.module-group-title{font-family:"Cabinet Grotesk",sans-serif;font-size:.8rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;color:var(--c)}
+.module-list{display:flex;flex-wrap:wrap;gap:8px}
+.module-chip{font-size:.78rem;padding:6px 12px;border-radius:980px;background:rgba(255,255,255,.06);border:1px solid var(--rule);color:rgba(255,255,255,.8)}
+.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:32px}
+.result-card{background:var(--glass);border:1px solid var(--rule);border-radius:16px;padding:28px 20px;text-align:center}
+.result-n{font-size:2rem;font-weight:800;color:var(--c)}
+.result-l{margin-top:6px;color:var(--muted);font-size:.85rem}
+.cta-final{margin:0 5% 80px;background:linear-gradient(135deg,#1C1C1E,#0d1a35);border:1px solid var(--rule);border-radius:20px;padding:60px 40px;text-align:center}
+.cta-final h2{font-family:"Cabinet Grotesk",sans-serif;font-size:2rem;margin-bottom:12px}
+footer{padding:40px 5%;border-top:1px solid var(--rule);text-align:center;color:var(--muted);font-size:.8rem}
+</style>
+</head>
+<body>
+<nav>
+  <a href="https://mundoconfia.es" class="nav-l">
+    <span class="nav-wordmark"><em>MUNDO</em>ConfÍA</span>
+  </a>
+  <a href="https://calendly.com/mundoconfia/orientacion?month=2026-02" target="_blank" rel="noopener" class="nav-cta">Pedir demo →</a>
+</nav>
+
+<section class="hero">
+  <h1>La plataforma que <span class="g">unifica</span><br>tu operación</h1>
+  <p class="hero-sub">ConfIA360 unifica tu operación en una sola plataforma. Dato único, módulos conectados y navegación continua de principio a fin.</p>
+  <a href="https://calendly.com/mundoconfia/orientacion?month=2026-02" target="_blank" rel="noopener" class="btn-main">Reservar orientación gratuita →</a>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label">Ecosistema ConfIA360</div>
+    <h2>Un core.<br>Módulos conectados.</h2>
+    <p class="section-sub">Todo conectado sobre un dato único. Elige los módulos que necesitas y crece sin cambiar de herramienta.</p>
+    <div class="modules-wrap">
+      <div class="module-group">
+        <div class="module-group-title">Finanzas y Ventas</div>
+        <div class="module-list">
+          <span class="module-chip">Contabilidad</span><span class="module-chip">Facturación</span><span class="module-chip">CRM</span><span class="module-chip">Ventas</span><span class="module-chip">Punto de venta</span>
+        </div>
+      </div>
+      <div class="module-group">
+        <div class="module-group-title">Sitios Web y Marketing</div>
+        <div class="module-list">
+          <span class="module-chip">Sitio web</span><span class="module-chip">Ecommerce</span><span class="module-chip">Email marketing</span><span class="module-chip">WhatsApp</span>
+        </div>
+      </div>
+      <div class="module-group">
+        <div class="module-group-title">Operaciones</div>
+        <div class="module-list">
+          <span class="module-chip">Inventario</span><span class="module-chip">Compras</span><span class="module-chip">Control de scandallo</span><span class="module-chip">Interfaz TPV</span>
+        </div>
+      </div>
+      <div class="module-group">
+        <div class="module-group-title">Equipo</div>
+        <div class="module-list">
+          <span class="module-chip">Empleados</span><span class="module-chip">Asistencias</span><span class="module-chip">Turnos inteligentes</span><span class="module-chip">Fichajes</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label">Resultados</div>
+    <h2>Medibles.<br>No promesas.</h2>
+    <div class="results">
+      <div class="result-card"><div class="result-n">-40%</div><div class="result-l">Carga administrativa</div></div>
+      <div class="result-card"><div class="result-n">1.2</div><div class="result-l">Meses de payback medio</div></div>
+      <div class="result-card"><div class="result-n">24/7</div><div class="result-l">IA disponible</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-final">
+  <h2>Empieza con ConfIA360</h2>
+  <p style="color:var(--muted);margin-bottom:24px">Una sola plataforma. Dato único. Módulos que crecen contigo.</p>
+  <a href="https://calendly.com/mundoconfia/orientacion?month=2026-02" target="_blank" rel="noopener" class="btn-main">Reservar orientación gratuita →</a>
+</div>
+
+<footer>
+  ConfIA360 · MUNDOConfÍA
+</footer>
+</body>
+</html>

@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/utils";
 import { KanbanColumn } from "./column";
 import { KanbanSkeleton } from "./skeleton";
 import { applyBoardFilters, FilterField, type BoardFilter } from "./filters";
+import { AdmitButton } from "@/components/clinic/admit";
 
 type BoardView = "columnas" | "lista" | "origen" | "profesional";
 
@@ -65,6 +66,7 @@ export function KanbanBoard() {
 
   return (
     <div className="flex flex-col gap-4">
+      <AdmitButton />
       <div className="flex gap-2 overflow-x-auto">
         {VIEWS.map((item) => (
           <button

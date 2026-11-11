@@ -10,6 +10,7 @@ import { addDays, allPayments, allVisits, occupancy, sameDay, startOfDay, type A
 import { formatMoney } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUiStore } from "@/lib/store/ui";
+import { AdmitButton } from "@/components/clinic/admit";
 
 type ViewMode = "dia" | "semana" | "mes" | "fechas";
 
@@ -40,6 +41,7 @@ export function Agenda() {
         <p className="label-kicker">Agenda</p>
         <h1 className="font-display text-3xl font-medium tracking-tight text-ink">Citas y ocupación</h1>
       </div>
+      <AdmitButton day={anchor} startWithVisit />
 
       <div className="flex gap-2 overflow-x-auto">
         {(
