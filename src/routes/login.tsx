@@ -44,7 +44,7 @@ function Login() {
     <main className="grid min-h-dvh place-items-center bg-bg px-4 py-10 text-ink">
       <div className="w-full max-w-sm">
         <AsexiAMark className="size-9" />
-        <p className="label-kicker mt-4">AsexiA Suite 360</p>
+        <p className="mt-4 text-[0.6875rem] font-medium tracking-tight text-ink-subtle">AsexiA · ConfIA360 CRMSAL</p>
         <h1 className="mt-1 font-display text-3xl font-medium tracking-tight">Entre con su clave</h1>
         <p className="mt-2 text-sm text-ink-muted">Dirección, recepción y médico usan la misma clínica. Cada uno entra con la suya.</p>
         {authEnabled ? (
@@ -62,7 +62,7 @@ function Login() {
               </label>
               <label className="text-sm">
                 <span className="text-ink-muted">Clave</span>
-                <Input className="mt-1" type="password" autoComplete={mode === "up" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} />
+                <Input className="mt-1" type="password" autoComplete={mode === "up" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} />
               </label>
               {error ? <p className="text-sm text-[#8A3B24]">{error}</p> : null}
               <Button type="submit" disabled={busy}>
@@ -72,6 +72,7 @@ function Login() {
                 {mode === "up" ? "Ya tengo clave" : "Crear una cuenta"}
               </button>
             </form>
+            <p className="mt-4 text-center text-xs text-ink-subtle">Dirección: mundoconfia@gmail.com</p>
             <div className="mt-5 flex flex-col gap-2">
               {GROK_PROVIDERS.map((provider) => (
                 <Button key={provider.providerId} type="button" variant="outline" onClick={() => void signIn(provider.providerId, { callbackURL: "/" })}>

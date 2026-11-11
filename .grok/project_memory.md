@@ -1,0 +1,2 @@
+- Landing simplificada de ConfIA360 guardada en asexia-confia360/public/confia360-landing.html [2026-11-10]
+- Repositorio principal de arquitectura: abrionesh/asexia-confia360 (índice vivo) [2026-11-10]

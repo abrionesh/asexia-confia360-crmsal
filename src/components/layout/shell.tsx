@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { Toaster } from "sonner";
 import { AsexiAMark } from "@/components/brand/mark";
@@ -9,7 +9,7 @@ import { StatusChrome } from "@/components/layout/status-chrome";
 import { VoiceBar } from "@/components/layout/voice-bar";
 import { Input } from "@/components/ui/input";
 import { UserButton } from "@/lib/auth/gates";
-import { useUiStore } from "@/lib/store/ui";
+import { useUiStore, type ClinicRole } from "@/lib/store/ui";
 import { ClinicSync } from "@/lib/api/sync";
 import { cn } from "@/lib/utils";
 
@@ -34,13 +34,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function ClinicChrome({ pathname, children }: { pathname: string; children: ReactNode }) {
+  const navigate = useNavigate();
   const isHome = pathname === "/";
   const search = useUiStore((state) => state.search);
   const setSearch = useUiStore((state) => state.setSearch);
   const role = useUiStore((state) => state.role);
+  const accountRole = useUiStore((state) => state.accountRole);
+  const doctor = useUiStore((state) => state.doctor);
+  const setRole = useUiStore((state) => state.setRole);
+  const setDoctor = useUiStore((state) => state.setDoctor);
   const clinicCode = useUiStore((state) => state.clinicCode);
   const clinicName = useUiStore((state) => state.clinicName);
   const roleLabel = role === "direccion" ? "Dirección" : role === "recepcion" ? "Recepción" : "Médico";
+  const previewing = accountRole === "direccion" && role !== "direccion";
   const links = [
     { to: "/", label: "Tablero", roles: ["direccion", "recepcion"] },
     { to: "/actuar", label: "Actuar", roles: ["direccion", "recepcion", "medico"] },
@@ -49,6 +55,19 @@ function ClinicChrome({ pathname, children }: { pathname: string; children: Reac
     { to: "/caja", label: "Caja", roles: ["direccion", "recepcion"] },
     { to: "/admin", label: "Admin", roles: ["direccion"] },
   ] as const;
+
+  function preview(next: ClinicRole) {
+    setRole(next);
+    if (next === "medico") {
+      if (!doctor) setDoctor("Dra. Elena Marín");
+    } else {
+      setDoctor("");
+    }
+    const blocked = next === "medico" ? ["/mandos", "/admin", "/caja"] : next === "recepcion" ? ["/mandos", "/admin"] : [];
+    if (blocked.some((path) => pathname.startsWith(path))) {
+      void navigate({ to: next === "medico" ? "/agenda" : "/" });
+    }
+  }
 
   return (
     <div className="min-h-dvh bg-bg text-ink">
@@ -61,21 +80,49 @@ function ClinicChrome({ pathname, children }: { pathname: string; children: Reac
               <span className="block font-display text-lg leading-none font-medium tracking-tight text-ink">
                 AsexiA
               </span>
-              <span className="label-kicker mt-0.5 block">Suite 360</span>
+              <span className="mt-0.5 block text-[0.6875rem] leading-none font-medium tracking-tight text-ink-subtle">
+                ConfIA360 CRMSAL
+              </span>
             </span>
           </Link>
           <div className="ml-auto flex min-w-0 items-center gap-3">
             <span className="hidden text-right sm:block">
-              <span className="block truncate text-xs text-ink-muted">{clinicName || "Clínica"} · {roleLabel}</span>
+              <span className="block truncate text-xs text-ink-muted">
+                {clinicName || "Clínica"} · {previewing ? `Vista de ${roleLabel.toLowerCase()}` : roleLabel}
+              </span>
               {clinicCode ? <span className="block text-2xs tracking-wide text-ink-subtle">Código {clinicCode}</span> : null}
             </span>
             <UserButton />
           </div>
         </div>
         <p className="mx-auto max-w-7xl px-4 pb-2 text-xs text-ink-muted sm:hidden">
-          {roleLabel}
+          {previewing ? `Vista de ${roleLabel.toLowerCase()}` : roleLabel}
           {clinicCode ? ` · código ${clinicCode}` : ""}
         </p>
+
+        {accountRole === "direccion" ? (
+          <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-2 sm:px-6">
+            {(
+              [
+                ["direccion", "Dirección"],
+                ["recepcion", "Recepción"],
+                ["medico", "Médico"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => preview(id)}
+                className={cn(
+                  "inline-flex h-8 shrink-0 items-center rounded-full px-3 text-xs font-medium",
+                  role === id ? "bg-ink text-accent-fg" : "text-ink-muted",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-3 sm:px-6">
           {links.filter((link) => (link.roles as readonly string[]).includes(role)).map((link) => {

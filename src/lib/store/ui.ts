@@ -8,6 +8,8 @@ interface UiState {
   copilotMessages: CopilotMessage[];
   copilotBusy: boolean;
   role: ClinicRole;
+  /** Papel real de la cuenta. La vista puede ser otra si dirección está mirando. */
+  accountRole: ClinicRole | null;
   doctor: string;
   clinicCode: string;
   clinicName: string;
@@ -25,19 +27,13 @@ export type ClinicRole = "direccion" | "recepcion" | "medico";
 
 const ROLE_KEY = "asexia.role";
 
-function storedRole(): ClinicRole {
-  if (typeof window === "undefined") return "direccion";
-  const value = window.localStorage.getItem(ROLE_KEY);
-  if (value === "recepcion" || value === "medico" || value === "direccion") return value;
-  return "direccion";
-}
-
 export const useUiStore = create<UiState>((set) => ({
   search: "",
   copilotOpen: false,
   copilotMessages: [openingMessage()],
   copilotBusy: false,
-  role: storedRole(),
+  role: "direccion",
+  accountRole: null,
   doctor: "Dra. Elena Marín",
   clinicCode: "",
   clinicName: "",

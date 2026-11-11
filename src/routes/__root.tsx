@@ -11,7 +11,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { queryClient } from "@/lib/query";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "AsexiA Suite 360";
+const APP_NAME = "AsexiA ConfIA360 CRMSAL";
 
 export const Route = createRootRoute({
   head: () => ({

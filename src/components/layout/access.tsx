@@ -40,11 +40,17 @@ export function StaffGate({ children }: { children: ReactNode }) {
   }
 
   const state = useUiStore.getState();
-  const role = book.role as ClinicRole;
-  if (state.role !== role || state.clinicCode !== (book.code ?? "") || (book.doctorName && state.doctor !== book.doctorName)) {
-    state.setRole(role);
+  const account = book.role as ClinicRole;
+  if (state.accountRole !== account) {
+    useUiStore.setState({
+      accountRole: account,
+      role: account,
+      clinicCode: book.code ?? "",
+      clinicName: book.name ?? "",
+      ...(book.doctorName ? { doctor: book.doctorName } : {}),
+    });
+  } else if (state.clinicCode !== (book.code ?? "") || state.clinicName !== (book.name ?? "")) {
     state.setClinic(book.code ?? "", book.name ?? "");
-    if (book.doctorName) state.setDoctor(book.doctorName);
   }
   return children;
 }

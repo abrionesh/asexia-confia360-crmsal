@@ -1,5 +1,5 @@
 /**
- * Domain contract for AsexiA Suite 360.
+ * Domain contract for AsexiA ConfIA360 CRMSAL.
  *
  * UI components depend only on these types + `api` in `./client`.
  * Swap the mock client for REST or Odoo XML-RPC without touching views.
