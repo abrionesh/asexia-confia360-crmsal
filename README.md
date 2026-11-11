@@ -1,4 +1,4 @@
-# AsexiA Suite 360
+# AsexiA core360 crmsal
 
 CRM de clínica, adaptable a otros sectores: pipeline, ficha, agenda, cobros, salas y alertas.
 
