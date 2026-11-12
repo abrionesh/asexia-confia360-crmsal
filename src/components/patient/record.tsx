@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Attachments } from "@/components/files/attachments";
 import { PatientPlans } from "@/components/patient/plans";
+import { previewPatient, useFichaDraft } from "./ficha-edit";
 
 const STATUS_LABEL = {
   programada: "Programada",
@@ -76,7 +77,9 @@ export function ActionBar({ patient }: { patient: Patient }) {
 export function FileCanvas({ patient }: { patient: Patient }) {
   const catalogQuery = useQuery({ queryKey: ["catalog"], queryFn: () => api.getCatalog() });
   const catalog = catalogQuery.data;
-  const money = economics(patient);
+  const edit = useFichaDraft();
+  const shown = edit ? previewPatient(patient, edit.draft) : patient;
+  const money = economics(shown);
   const visits = [...(patient.visits ?? [])].sort(
     (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
   );
@@ -109,7 +112,23 @@ export function FileCanvas({ patient }: { patient: Patient }) {
                 <p className="mt-1 text-sm text-ink-muted">
                   {visit.roomName} · {visit.durationMin} min · {visit.professional}
                 </p>
-                <p className="mt-1 text-sm text-ink">{formatMoney(visit.price)}</p>
+                {edit ? (
+                  <Input
+                    className="mt-2 bg-surface"
+                    aria-label={`Precio de ${visit.activityName}`}
+                    inputMode="decimal"
+                    value={edit.draft.visitPrices[visit.id] ?? String(visit.price)}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      edit.setDraft((current) => ({
+                        ...current,
+                        visitPrices: { ...current.visitPrices, [visit.id]: value },
+                      }));
+                    }}
+                  />
+                ) : (
+                  <p className="mt-1 text-sm text-ink">{formatMoney(visit.price)}</p>
+                )}
                 {visit.notes ? <p className="mt-2 text-sm leading-relaxed text-ink-muted">{visit.notes}</p> : null}
                 {visit.confirmation === "confirmada" ? <p className="mt-2 text-xs text-ink-muted">El paciente confirmó.</p> : null}
                 {visit.confirmation === "no-puede" ? <p className="mt-2 text-xs text-ink-muted">Dijo que no puede.</p> : null}
@@ -139,8 +158,11 @@ export function FileCanvas({ patient }: { patient: Patient }) {
           <Money label="Cobrado" value={money.collected} />
           <Money label="Pendiente" value={money.pending} />
         </div>
+        {edit ? (
+          <p className="mt-2 text-xs text-ink-muted">Estas tres cifras se calculan. Se puede cambiar el importe previsto y los cobros pendientes. Un cobro ya hecho y la firma no se reescriben.</p>
+        ) : null}
         <ul className="mt-4 flex flex-col gap-2">
-          {(patient.payments ?? []).map((payment) => (
+          {(shown.payments ?? []).map((payment) => (
             <li key={payment.id} className="flex items-start justify-between gap-3 text-sm">
               <span>
                 <span className="block font-medium text-ink">{payment.concept}</span>
@@ -150,7 +172,23 @@ export function FileCanvas({ patient }: { patient: Patient }) {
                 </span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
-                <span className="tabular-nums text-ink">{formatMoney(payment.amount)}</span>
+                {edit && payment.status === "pendiente" ? (
+                  <Input
+                    className="w-28 bg-bg text-right"
+                    aria-label={`Importe de ${payment.concept}`}
+                    inputMode="decimal"
+                    value={edit.draft.paymentAmounts[payment.id] ?? String(payment.amount)}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      edit.setDraft((current) => ({
+                        ...current,
+                        paymentAmounts: { ...current.paymentAmounts, [payment.id]: value },
+                      }));
+                    }}
+                  />
+                ) : (
+                  <span className="tabular-nums text-ink">{formatMoney(payment.amount)}</span>
+                )}
                 {payment.status === "cobrado" ? <InvoiceButtons patientId={patient.id} paymentId={payment.id} /> : null}
               </span>
             </li>

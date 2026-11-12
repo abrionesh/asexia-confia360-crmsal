@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/utils";
 import { KanbanColumn } from "./column";
 import { KanbanSkeleton } from "./skeleton";
 import { applyBoardFilters, FilterField, type BoardFilter } from "./filters";
-import { AdmitButton } from "@/components/clinic/admit";
+import { AdmitButton, EditPatientButton } from "@/components/clinic/admit";
 
 type BoardView = "columnas" | "lista" | "origen" | "profesional";
 
@@ -120,7 +120,8 @@ function BoardList({ patients, onMove }: { patients: Patient[]; onMove: (id: str
   return (
     <ul className="flex flex-col gap-2">
       {patients.map((patient) => (
-        <li key={patient.id} className="flex items-center gap-2 rounded-xl bg-surface px-3 py-2 shadow-border">
+        <li key={patient.id} className="rounded-xl bg-surface px-3 py-2 shadow-border">
+          <div className="flex items-center gap-2">
           <Link to="/pacientes/$id" params={{ id: patient.id }} className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-ink">{patient.fullName}</span>
             <span className="block truncate text-xs text-ink-muted">
@@ -129,6 +130,8 @@ function BoardList({ patients, onMove }: { patients: Patient[]; onMove: (id: str
           </Link>
           <span className="shrink-0 text-sm tabular-nums text-ink">{formatMoney(patient.estimatedValue)}</span>
           <StageSelect patient={patient} onMove={onMove} />
+          </div>
+          <EditPatientButton patient={patient} />
         </li>
       ))}
     </ul>

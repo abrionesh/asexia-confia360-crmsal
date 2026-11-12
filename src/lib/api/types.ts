@@ -268,6 +268,23 @@ export interface AdmitInput {
   visit?: VisitInput | null;
 }
 
+export interface FichaPatch {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  city: string;
+  birthday: string;
+  source: LeadSource;
+  treatmentInterest: string;
+  assignedTo: string;
+  estimatedValue: number;
+  notes: string;
+  contraindications: string;
+  visits: { id: string; price: number }[];
+  payments: { id: string; amount: number }[];
+}
+
 export interface AdmitResult {
   patient: Patient;
   /** False cuando el teléfono o el correo ya tenían ficha. */
@@ -447,6 +464,8 @@ export interface AsexiAApi {
   listInvoices(): Promise<Invoice[]>;
   deletePatient(patientId: string): Promise<boolean>;
   admitPatient(input: AdmitInput): Promise<AdmitResult>;
+  updatePatient(id: string, input: Omit<AdmitInput, "visit">): Promise<Patient>;
+  saveFicha(id: string, input: FichaPatch): Promise<Patient>;
   replyVisit(patientId: string, answer: "confirmada" | "no-puede"): Promise<string>;
   setVisitStatus(patientId: string, visitId: string, status: Visit["status"]): Promise<Patient | null>;
   ensurePortal(patientId: string): Promise<string | null>;

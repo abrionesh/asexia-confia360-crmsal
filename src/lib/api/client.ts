@@ -32,6 +32,7 @@ import type {
   TimelineEvent,
   VisitInput,
   AdmitInput,
+  FichaPatch,
   Invoice,
   WaitEntry,
   PayMethod,
@@ -847,6 +848,112 @@ function createMockClient(): AsexiAApi {
       const patient = patients.find((item) => item.id === id);
       if (!patient) throw new Error("No se pudo guardar la ficha.");
       return clone({ patient, created });
+    },
+    async updatePatient(id, input) {
+      if (!isOffline()) await wait(180);
+      const current = patients.find((item) => item.id === id);
+      if (!current) throw new Error("No encontramos la ficha.");
+      const firstName = input.firstName.trim();
+      const lastName = input.lastName.trim();
+      const phone = input.phone.trim();
+      const email = input.email.trim().toLowerCase();
+      if (!firstName) throw new Error("Escriba el nombre.");
+      if (digitsOf(phone).length < 9 && !email) throw new Error("Indique un teléfono o un correo.");
+      const tail = digitsOf(phone).slice(-9);
+      const clash = patients.find((item) => {
+        if (item.id === id) return false;
+        if (tail.length >= 9 && digitsOf(item.phone).endsWith(tail)) return true;
+        return Boolean(email) && item.email.trim().toLowerCase() === email;
+      });
+      if (clash) throw new Error(`Ese teléfono o correo ya está en la ficha de ${clash.fullName}.`);
+      const interest = catalog.activities.find((item) => item.id === input.interest);
+      const previous = catalog.activities.find((item) => item.name === current.treatmentInterest);
+      const updated = patchPatient(id, (patient) => ({
+        ...patient,
+        firstName,
+        lastName,
+        fullName: `${firstName} ${lastName}`.trim(),
+        phone,
+        email,
+        source: input.source,
+        treatmentInterest: interest?.name || patient.treatmentInterest,
+        estimatedValue:
+          interest && (patient.estimatedValue === 0 || patient.estimatedValue === previous?.price)
+            ? interest.price
+            : patient.estimatedValue,
+        tags: [...patient.tags.filter((tag) => tag !== "posible" && tag !== "cliente"), input.kind],
+        preferredChannel: phone ? patient.preferredChannel ?? "whatsapp" : "email",
+      }));
+      if (!updated) throw new Error("No se pudo guardar la ficha.");
+      pushEvent(id, {
+        channel: "system",
+        direction: "internal",
+        title: "Ficha editada",
+        body: `${updated.fullName} · ${input.source}`,
+      });
+      persist();
+      return clone(updated);
+    },
+    async saveFicha(id, input: FichaPatch) {
+      if (!isOffline()) await wait(180);
+      const current = patients.find((item) => item.id === id);
+      if (!current) throw new Error("No encontramos la ficha.");
+      const firstName = input.firstName.trim();
+      const lastName = input.lastName.trim();
+      const phone = input.phone.trim();
+      const email = input.email.trim().toLowerCase();
+      if (!firstName) throw new Error("Escriba el nombre.");
+      if (digitsOf(phone).length < 9 && !email) throw new Error("Indique un teléfono o un correo.");
+      if (!Number.isFinite(input.estimatedValue) || input.estimatedValue < 0) {
+        throw new Error("El importe previsto no es válido.");
+      }
+      const tail = digitsOf(phone).slice(-9);
+      const clash = patients.find((item) => {
+        if (item.id === id) return false;
+        if (tail.length >= 9 && digitsOf(item.phone).endsWith(tail)) return true;
+        return Boolean(email) && item.email.trim().toLowerCase() === email;
+      });
+      if (clash) throw new Error(`Ese teléfono o correo ya está en la ficha de ${clash.fullName}.`);
+      const visitPrice = new Map(input.visits.map((item) => [item.id, item.price]));
+      const paymentAmount = new Map(input.payments.map((item) => [item.id, item.amount]));
+      const updated = patchPatient(id, (patient) => ({
+        ...patient,
+        firstName,
+        lastName,
+        fullName: `${firstName} ${lastName}`.trim(),
+        phone,
+        email,
+        city: input.city.trim(),
+        birthday: input.birthday.trim() || undefined,
+        source: input.source,
+        treatmentInterest: input.treatmentInterest.trim() || patient.treatmentInterest,
+        assignedTo: input.assignedTo.trim() || patient.assignedTo,
+        estimatedValue: input.estimatedValue,
+        ledgerTotal: input.estimatedValue,
+        notes: input.notes,
+        contraindications: input.contraindications.trim(),
+        preferredChannel: phone ? patient.preferredChannel ?? "whatsapp" : "email",
+        visits: (patient.visits ?? []).map((visit) => {
+          const price = visitPrice.get(visit.id);
+          if (price === undefined || !Number.isFinite(price) || price < 0) return visit;
+          return { ...visit, price };
+        }),
+        payments: (patient.payments ?? []).map((payment) => {
+          if (payment.status !== "pendiente") return payment;
+          const amount = paymentAmount.get(payment.id);
+          if (amount === undefined || !Number.isFinite(amount) || amount <= 0) return payment;
+          return { ...payment, amount };
+        }),
+      }));
+      if (!updated) throw new Error("No se pudo guardar la ficha.");
+      pushEvent(id, {
+        channel: "system",
+        direction: "internal",
+        title: "Ficha editada",
+        body: updated.fullName,
+      });
+      persist();
+      return clone(patients.find((item) => item.id === id) ?? updated);
     },
     async deletePatient(patientId: string) {
       if (!patients.some((item) => item.id === patientId)) return false;

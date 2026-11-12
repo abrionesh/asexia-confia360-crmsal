@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatMoney } from "@/lib/utils";
+import { EditPatientButton } from "@/components/clinic/admit";
 
 export function PatientCard({
   patient,
@@ -105,6 +106,9 @@ export function PatientCard({
       <div className="mt-3 flex items-center justify-between text-2xs text-ink-subtle">
         <span className="truncate">{patient.assignedTo}</span>
         <span className="shrink-0">{ago}</span>
+      </div>
+      <div className="mt-2">
+        <EditPatientButton patient={patient} />
       </div>
     </article>
   );

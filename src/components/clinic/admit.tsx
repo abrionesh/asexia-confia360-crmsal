@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { useNavigate } from "@tanstack/react-router";
+import { api, type Patient } from "@/lib/api";
 import type { LeadSource } from "@/lib/api/types";
 import { useUiStore } from "@/lib/store/ui";
 import { Button } from "@/components/ui/button";
@@ -180,5 +181,25 @@ function AdmitForm({
         {save.isPending ? "Guardando…" : "Dar de alta"}
       </Button>
     </form>
+  );
+}
+
+export function EditPatientButton({ patient }: { patient: Patient }) {
+  const role = useUiStore((state) => state.role);
+  const navigate = useNavigate();
+  if (role === "medico") return null;
+  return (
+    <div className="w-full" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+      <button
+        type="button"
+        className="text-xs font-medium text-accent"
+        onClick={() => {
+          sessionStorage.setItem("asexia.editar", patient.id);
+          void navigate({ to: "/pacientes/$id", params: { id: patient.id } });
+        }}
+      >
+        Editar
+      </button>
+    </div>
   );
 }
